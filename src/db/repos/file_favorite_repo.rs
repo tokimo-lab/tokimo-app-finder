@@ -1,7 +1,7 @@
 use sea_orm::*;
 use uuid::Uuid;
 
-use crate::AppError;
+use crate::error::AppError;
 use crate::db::entities::file_favorites;
 
 pub struct FileFavoriteRepo;

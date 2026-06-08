@@ -5,10 +5,7 @@ use tokimo_bus_auth::db::verify_token;
 use tokimo_bus_cli::{Credentials, TokimoAuthArgs};
 use uuid::Uuid;
 
-use crate::{
-    FavoritesCmd,
-    db::{init_pool, repos::file_favorite_repo::FileFavoriteRepo},
-};
+use crate::{FavoritesCmd, db::{init_pool, repos::file_favorite_repo::FileFavoriteRepo}};
 
 pub async fn run_favorites(auth: TokimoAuthArgs, cmd: FavoritesCmd) -> anyhow::Result<()> {
     let (db, user_id) = init(auth).await?;
@@ -22,7 +19,6 @@ pub async fn run_favorites(auth: TokimoAuthArgs, cmd: FavoritesCmd) -> anyhow::R
                 println!("No favorites.");
                 return Ok(());
             }
-
             println!("{:<36}  {:<36}  {:<8}  Name", "VFS ID", "Path", "Dir?");
             for item in items {
                 println!(
@@ -31,23 +27,7 @@ pub async fn run_favorites(auth: TokimoAuthArgs, cmd: FavoritesCmd) -> anyhow::R
                 );
             }
         }
-        FavoritesCmd::Add {
-            vfs_id,
-            path,
-            name,
-            is_directory,
-        } => {
-            let added = FileFavoriteRepo::toggle(&db, user_id, vfs_id, path, name, is_directory)
-                .await
-                .context("add favorite failed")?;
-            if added {
-                println!("Added to favorites.");
-            } else {
-                println!("Already favorited (removed).");
-            }
-        }
         FavoritesCmd::Remove { vfs_id, path } => {
-            // toggle will remove if exists
             let removed = FileFavoriteRepo::toggle(&db, user_id, vfs_id, path, String::new(), false)
                 .await
                 .context("remove favorite failed")?;

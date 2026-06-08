@@ -1,65 +1,82 @@
-//! Axum handlers for finder favorites.
+//! Handlers — favorites CRUD + response helpers.
 
 use std::sync::Arc;
 
 use axum::{Json, extract::State};
-use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use tokimo_bus_auth::TokimoUser;
-use ts_rs::TS;
 use uuid::Uuid;
 
-use crate::AppError;
+use crate::ctx::AppCtx;
 use crate::db::repos::file_favorite_repo::FileFavoriteRepo;
+use crate::error::AppError;
 
-pub struct AppCtx {
-    pub db: DatabaseConnection,
+// ─── Response helpers (matching music app pattern) ─────────────────────
+
+#[derive(Serialize)]
+pub struct ApiResponse<T: Serialize> {
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<T>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
-// ─── Favorites ─────────────────────────────────────────────────────────
+pub fn ok<T: Serialize>(data: T) -> Json<ApiResponse<T>> {
+    Json(ApiResponse {
+        success: true,
+        data: Some(data),
+        error: None,
+    })
+}
 
-#[derive(Serialize, TS)]
-#[ts(export)]
+pub fn ok_empty() -> Json<ApiResponse<()>> {
+    Json(ApiResponse {
+        success: true,
+        data: None,
+        error: None,
+    })
+}
+
+// ─── Output DTO ───────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileFavoriteDto {
-    #[ts(type = "string")]
-    pub id: Uuid,
-    #[ts(type = "string")]
-    pub user_id: Uuid,
-    #[ts(type = "string")]
-    pub vfs_id: Uuid,
+    pub id: String,
+    pub user_id: String,
+    pub vfs_id: String,
     pub path: String,
     pub name: String,
     pub is_directory: bool,
-    #[ts(type = "string")]
-    pub created_at: chrono::DateTime<chrono::FixedOffset>,
+    pub created_at: String,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ListFavoritesResp {
-    items: Vec<FileFavoriteDto>,
+fn to_favorite_dto(m: crate::db::entities::file_favorites::Model) -> FileFavoriteDto {
+    FileFavoriteDto {
+        id: m.id.to_string(),
+        user_id: m.user_id.to_string(),
+        vfs_id: m.vfs_id.to_string(),
+        path: m.path,
+        name: m.name,
+        is_directory: m.is_directory,
+        created_at: m.created_at.to_rfc3339(),
+    }
 }
+
+// ─── Handlers ─────────────────────────────────────────────────────────
 
 pub async fn list_favorites(
     State(ctx): State<Arc<AppCtx>>,
     TokimoUser { user_id }: TokimoUser,
-) -> Result<Json<ListFavoritesResp>, AppError> {
+) -> Result<Json<ApiResponse<Vec<FileFavoriteDto>>>, AppError> {
     let user_id = parse_uuid(&user_id)?;
     let items = FileFavoriteRepo::list(&ctx.db, user_id)
         .await?
         .into_iter()
-        .map(|m| FileFavoriteDto {
-            id: m.id,
-            user_id: m.user_id,
-            vfs_id: m.vfs_id,
-            path: m.path,
-            name: m.name,
-            is_directory: m.is_directory,
-            created_at: m.created_at,
-        })
+        .map(to_favorite_dto)
         .collect();
-    Ok(Json(ListFavoritesResp { items }))
+    Ok(ok(items))
 }
 
 #[derive(Deserialize)]
@@ -71,17 +88,11 @@ pub struct ToggleFavoriteBody {
     pub is_directory: bool,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ToggleFavoriteResp {
-    is_favorited: bool,
-}
-
 pub async fn toggle_favorite(
     State(ctx): State<Arc<AppCtx>>,
     TokimoUser { user_id }: TokimoUser,
     Json(body): Json<ToggleFavoriteBody>,
-) -> Result<Json<ToggleFavoriteResp>, AppError> {
+) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
     let user_id = parse_uuid(&user_id)?;
     let vfs_id = parse_uuid(&body.vfs_id)?;
     let is_favorited = FileFavoriteRepo::toggle(
@@ -93,7 +104,7 @@ pub async fn toggle_favorite(
         body.is_directory,
     )
     .await?;
-    Ok(Json(ToggleFavoriteResp { is_favorited }))
+    Ok(ok(serde_json::json!({ "isFavorited": is_favorited })))
 }
 
 fn parse_uuid(s: &str) -> Result<Uuid, AppError> {

@@ -1,11 +1,4 @@
 // Tokimo monorepo dev-mode override.
-// When this app is checked out *inside* the main tokimo monorepo
-// (so packages/ui, packages/tokimo-package-sdk, packages/tokimo-app-builder
-// exist as sibling submodules), rewrite the @tokimo/* git dependencies
-// to local file: paths so changes to those packages are picked up
-// without bumping a sha. Outside the monorepo this hook rewrites any
-// remaining workspace:* specs in @tokimo/* transitive deps to fixed github:
-// refs so standalone pnpm install works without a workspace.
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -14,16 +7,14 @@ function findMonorepoRoot(start) {
   while (dir !== path.dirname(dir)) {
     if (
       fs.existsSync(path.join(dir, "packages/tokimo-app-builder/package.json"))
-    ) {
+    )
       return dir;
-    }
     dir = path.dirname(dir);
   }
   return null;
 }
 
 const root = findMonorepoRoot(__dirname);
-
 function rel(target) {
   return path.relative(__dirname, target).split(path.sep).join("/");
 }
@@ -45,24 +36,22 @@ const githubRefs = {
     "github:tokimo-lab/tokimo-app-builder#2232b1ba4fb9b7d61645c6588c579106bf6821dd",
 };
 
-if (fileOverrides) {
+if (fileOverrides)
   console.log(
     `[tokimo .pnpmfile.cjs] monorepo detected at ${root}; overriding @tokimo/* to file: paths`,
   );
-}
 
 function rewriteSection(section) {
   if (!section) return;
   for (const [name, spec] of Object.entries(section)) {
-    if (fileOverrides && Object.hasOwn(fileOverrides, name)) {
+    if (fileOverrides && Object.hasOwn(fileOverrides, name))
       section[name] = fileOverrides[name];
-    } else if (
+    else if (
       !fileOverrides &&
       spec === "workspace:*" &&
       Object.hasOwn(githubRefs, name)
-    ) {
+    )
       section[name] = githubRefs[name];
-    }
   }
 }
 

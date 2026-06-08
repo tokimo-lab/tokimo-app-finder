@@ -1,9 +1,8 @@
-# Tokimo Finder app manifest
 [app]
 id          = "finder"
 display     = "Finder"
 version     = "0.1.0"
-description = "File manager with favorites, browsing, and VFS integration"
+description = "Tokimo 文件管理器 — 文件浏览、收藏夹管理"
 
 [runtime]
 lifecycle    = "resident"
@@ -21,7 +20,11 @@ width        = 1100
 height       = 700
 full_bleed   = true
 
+[cli]
+name = "tokimo-app-finder"
+description = "Manage file favorites."
+
 [database]
-schema         = "finder"
+schema = "finder"
 migrations_dir = "migrations"
-driver         = "postgres"
+driver = "postgres"

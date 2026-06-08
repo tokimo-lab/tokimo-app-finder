@@ -1,77 +1,30 @@
 //! Finder app — file manager with favorites.
 //!
-//! 启动流程：
-//! 1. 连接 broker（supervisor 健康检查）
-//! 2. 起 axum router 监听 UDS
-//! 3. 把 sock 报给 broker（data_plane_socket）
-//! 4. server 端 `/api/apps/finder/<rest>` 反代到本 sock 的 `/<rest>`
+//! CLI / Server 双模二进制。
 
 const MANIFEST: &str = include_str!("../tokimo-app.toml");
 
 mod app_server;
 mod assets;
+mod bus_clients;
 mod cli;
+mod ctx;
 mod db;
-pub mod handlers;
+mod error;
+mod handlers;
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
-use axum::{Json, http::StatusCode, response::IntoResponse};
 use clap::{Parser, Subcommand};
 use tokimo_bus_cli::TokimoAuthArgs;
 use tokimo_bus_client::{BusClient, ClientConfig};
 use tracing::{error, info};
 
-#[derive(Debug)]
-pub enum AppError {
-    Database(sea_orm::DbErr),
-    BadRequest(String),
-    Internal(String),
-}
-
-impl AppError {
-    pub fn bad_request(msg: impl Into<String>) -> Self {
-        Self::BadRequest(msg.into())
-    }
-    pub fn internal(msg: impl Into<String>) -> Self {
-        Self::Internal(msg.into())
-    }
-}
-
-impl IntoResponse for AppError {
-    fn into_response(self) -> axum::response::Response {
-        let (status, message) = match &self {
-            AppError::Database(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("db: {e}")),
-            AppError::BadRequest(m) => (StatusCode::BAD_REQUEST, m.clone()),
-            AppError::Internal(m) => (StatusCode::INTERNAL_SERVER_ERROR, m.clone()),
-        };
-        let body = serde_json::json!({ "error": message });
-        (status, Json(body)).into_response()
-    }
-}
-
-impl From<sea_orm::DbErr> for AppError {
-    fn from(e: sea_orm::DbErr) -> Self {
-        Self::Database(e)
-    }
-}
-
-impl std::fmt::Display for AppError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AppError::Database(e) => write!(f, "db: {e}"),
-            AppError::BadRequest(m) | AppError::Internal(m) => write!(f, "{m}"),
-        }
-    }
-}
-
-impl std::error::Error for AppError {}
-
 #[derive(Parser, Debug)]
 #[command(
     name = "tokimo-app-finder",
     about = "Finder — Tokimo 文件管理器 CLI",
-    long_about = "Finder CLI — 管理文件收藏夹。\n\nCLI 直接读写数据库，不依赖主 server 进程运行。",
+    long_about = "Finder CLI — 管理文件收藏夹。\n\n直接连接数据库（通过 DATABASE_URL），不需要主 server 运行。",
     term_width = 100
 )]
 struct Cli {
@@ -100,27 +53,10 @@ enum Command {
 pub(crate) enum FavoritesCmd {
     /// 列出收藏
     List,
-    /// 添加收藏
-    Add {
-        /// VFS ID (UUID)
-        #[arg(long)]
-        vfs_id: uuid::Uuid,
-        /// 文件路径
-        #[arg(long)]
-        path: String,
-        /// 文件名
-        #[arg(long)]
-        name: String,
-        /// 是否目录
-        #[arg(long, default_value = "false")]
-        is_directory: bool,
-    },
     /// 取消收藏
     Remove {
-        /// VFS ID (UUID)
         #[arg(long)]
         vfs_id: uuid::Uuid,
-        /// 文件路径
         #[arg(long)]
         path: String,
     },
@@ -134,8 +70,9 @@ async fn main() -> anyhow::Result<()> {
         None if std::env::var_os("TOKIMO_BUS_SOCKET").is_some() => {
             tracing_subscriber::fmt()
                 .with_env_filter(
-                    tracing_subscriber::EnvFilter::try_from_default_env()
-                        .unwrap_or_else(|_| "info,tokimo_bus_client=info,tokimo_app_finder=debug".into()),
+                    tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                        "info,tokimo_bus_client=info,tokimo_app_finder=debug".into()
+                    }),
                 )
                 .init();
             if let Err(error) = run_server().await {
@@ -177,11 +114,15 @@ async fn run_server() -> anyhow::Result<()> {
     info!(endpoint = ?cfg.endpoint, "finder: connecting to broker");
 
     let db = db::init_pool().await?;
-    info!("finder: db connected (schema managed by host)");
+    info!("finder: db connected");
 
-    let ctx = Arc::new(handlers::AppCtx { db });
+    let client_slot: Arc<OnceLock<Arc<BusClient>>> = Arc::new(OnceLock::new());
+    let context = Arc::new(ctx::AppCtx {
+        db,
+        client: Arc::clone(&client_slot),
+    });
 
-    let app_socket = app_server::spawn("finder", Arc::clone(&ctx))
+    let app_socket = app_server::spawn("finder", Arc::clone(&context))
         .await
         .map_err(|e| anyhow::anyhow!("app_server spawn: {e}"))?;
 
@@ -191,6 +132,9 @@ async fn run_server() -> anyhow::Result<()> {
         .build()
         .await
         .map_err(|e| anyhow::anyhow!("bus build: {e}"))?;
+    client_slot
+        .set(Arc::clone(&client))
+        .map_err(|_| anyhow::anyhow!("client_slot already set"))?;
 
     info!("finder: registered with broker");
 

@@ -1,9 +1,6 @@
-//! 内嵌 axum HTTP server，监听本地 socket。
+//! 内嵌 axum HTTP server，监听本地 UDS socket。
 //!
-//! 路由布局（server 端 `/api/apps/finder/<rest>` 反代到本 sock 的 `/<rest>`）：
-//! - `GET  /favorites`           → 列出收藏
-//! - `POST /favorites/toggle`    → 切换收藏状态
-//! - `GET  /assets/{*path}`      → 静态资源
+//! 路由布局（server 端 `/api/apps/finder/<rest>` 反代到本 sock 的 `/<rest>`）。
 
 use std::sync::Arc;
 
@@ -11,7 +8,7 @@ use axum::{Router, routing::get, routing::post};
 use tokimo_bus_protocol::{BusListener, DataPlaneSocket};
 use tracing::{error, info};
 
-use crate::{assets, handlers, handlers::AppCtx};
+use crate::{assets, ctx::AppCtx, handlers};
 
 pub async fn spawn(service: &str, ctx: Arc<AppCtx>) -> anyhow::Result<DataPlaneSocket> {
     let (listener, socket) = BusListener::bind_for_app(service)?;
