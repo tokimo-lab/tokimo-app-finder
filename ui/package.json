@@ -13,7 +13,10 @@
     "@tokimo/ui": "github:tokimo-lab/tokimo-ui#683e9322d6e96ded543c97805b25736750a09f11",
     "lucide-react": "1.7.0",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "react-i18next": "^15.0.0",
+    "i18next": "^25.0.0",
+    "@floating-ui/react": "^0.27.0"
   },
   "devDependencies": {
     "@tokimo/app-builder": "github:tokimo-lab/tokimo-app-builder#5be9a3e036908730a0ae7d9e49c7b3f76d7d30cb",

@@ -1,33 +1,112 @@
-/**
- * FinderContent — top-level component for the finder standalone app.
- *
- * Uses @tokimo/sdk hooks for window state and the hand-written api client
- * for VFS + favorites operations. No @/ imports.
- */
-import { useWindowActions, useWindows } from "@tokimo/sdk";
+import { useWindowActions, useWindowNav } from "@tokimo/sdk";
 import { AppSetupGuide, Spin } from "@tokimo/ui";
-import { FolderPlus, HardDrive } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { Archive, FolderPlus, HardDrive, Star } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import type { VfsDisplayHints, VfsDto } from "../api/client";
 import { api } from "../api/client";
+import { FinderFavoritesContent } from "../components/FinderFavoritesContent";
+import { FAVORITES_KEY, VfsSidebar } from "../components/VfsSidebar";
+import { useContainerWidth } from "../hooks/use-container-width";
+import { useSidebarCollapsed } from "../hooks/use-sidebar-collapsed";
+import { useWindowMetadata } from "../hooks/use-window-state";
 
-export default function FinderContent() {
-  const { currentWindowId, openWindow } = useWindowActions();
-  const windows = useWindows();
+const FileManager = lazy(() =>
+  import("./FileManager").then((m) => ({
+    default: m.FileManager,
+  })),
+);
 
-  // Read current window's metadata (set by the opener, e.g. VFS settings page)
-  const metadata = useMemo(() => {
-    const win = windows.find((w) => w.id === currentWindowId);
-    return (win?.metadata as Record<string, unknown>) ?? {};
-  }, [windows, currentWindowId]);
+function buildBrowseLabel(
+  type: string,
+  displayHints?: VfsDisplayHints | null,
+  name?: string,
+): string {
+  return displayHints?.protocolPrefix ?? `${type}://${name || type}`;
+}
+
+export default function FileBrowserContent() {
+  const { t } = useTranslation();
+  const { route, replace } = useWindowNav();
+  const { currentWindowId, updateMetadata, openWindow } = useWindowActions();
+  const metadata = useWindowMetadata();
 
   const fileSystemId = metadata.fileSystemId as string | undefined;
+  const initialPath = route || "/";
+  const sourceLabel = metadata.fsSourceLabel as string | undefined;
+  const favoritesActive = metadata.favoritesActive === true;
 
-  const [currentPath, setCurrentPath] = useState<string>(
-    (metadata.route as string) || "/",
+  const [containerRef, containerWidth] = useContainerWidth();
+  const { collapsed: sidebarCollapsed, onToggleCollapse } = useSidebarCollapsed(
+    "finder",
+    containerWidth > 0 && containerWidth < 720,
   );
 
+  // Always query fileSystems (needed for auto-select and favorites→VFS navigation)
   const { data: fileSystems, isLoading: isVfsLoading } =
     api.vfs.list.useQuery();
+
+  // Auto-select first enabled filesystem when none is set
+  useEffect(() => {
+    if (fileSystemId) return;
+    const first = fileSystems?.[0];
+    if (!first) return;
+    const dirPath =
+      first.type === "local" ? "/" : first.displayHints?.rootPath || "/";
+    updateMetadata(currentWindowId, {
+      fileSystemId: first.id,
+      fsSourceType: first.type,
+      fsSourceLabel: buildBrowseLabel(
+        first.type,
+        first.displayHints,
+        first.name,
+      ),
+    });
+    replace(dirPath);
+  }, [fileSystemId, fileSystems, updateMetadata, replace, currentWindowId]);
+
+  const handleNavigate = useCallback(
+    (path: string) => {
+      replace(path);
+    },
+    [replace],
+  );
+
+  const handleSwitchVfs = useCallback(
+    (fs: VfsDto) => {
+      if (fs.id === fileSystemId && !favoritesActive) return;
+      const dirPath =
+        fs.type === "local" ? "/" : fs.displayHints?.rootPath || "/";
+      updateMetadata(currentWindowId, {
+        fileSystemId: fs.id,
+        fsSourceType: fs.type,
+        fsSourceLabel: buildBrowseLabel(fs.type, fs.displayHints, fs.name),
+        favoritesActive: false,
+      });
+      replace(dirPath);
+    },
+    [fileSystemId, favoritesActive, updateMetadata, replace, currentWindowId],
+  );
+
+  const handleSelectFavorites = useCallback(() => {
+    updateMetadata(currentWindowId, { favoritesActive: true });
+  }, [updateMetadata, currentWindowId]);
+
+  /** Called from FinderFavoritesContent when user double-clicks a directory */
+  const handleSwitchToVfsById = useCallback(
+    (vfsId: string, path: string) => {
+      const fs = (fileSystems ?? []).find((f) => f.id === vfsId);
+      if (!fs) return;
+      updateMetadata(currentWindowId, {
+        fileSystemId: vfsId,
+        fsSourceType: fs.type,
+        fsSourceLabel: buildBrowseLabel(fs.type, fs.displayHints, fs.name),
+        favoritesActive: false,
+      });
+      replace(path);
+    },
+    [fileSystems, updateMetadata, replace, currentWindowId],
+  );
 
   const openVfsSettings = useCallback(() => {
     openWindow({
@@ -51,148 +130,56 @@ export default function FinderContent() {
       <AppSetupGuide
         imageSrc="/page-icons/files.png"
         accentColor="blue"
-        title="开始使用 Finder"
-        description="连接存储源后即可浏览和管理文件"
-        features={[
-          { icon: HardDrive, label: "连接本地或远程存储" },
-          { icon: FolderPlus, label: "浏览、创建、管理文件" },
-        ]}
-        actionLabel="添加存储源"
+        title={t("common.setupGuide.getStarted", { name: "Finder" })}
+        description={t("common.setupGuide.finderTagline")}
+        features={(
+          t("common.setupGuide.finderFeatures", {
+            returnObjects: true,
+          }) as string[]
+        ).map((label, i) => ({
+          icon: [HardDrive, Star, Archive][i],
+          label,
+        }))}
+        actionLabel={t("common.setupGuide.finderAction")}
         actionIcon={FolderPlus}
         onAction={openVfsSettings}
       />
     );
   }
 
-  // Determine which filesystem to show
-  const activeFs = fileSystemId
-    ? fileSystems.find((f) => f.id === fileSystemId)
-    : fileSystems[0];
+  const activeKey = favoritesActive ? FAVORITES_KEY : fileSystemId;
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar */}
-      <aside className="w-[220px] shrink-0 border-r border-black/10 dark:border-white/10 overflow-y-auto">
-        <div className="p-3 text-xs font-semibold text-fg-muted uppercase tracking-wide">
-          存储源
-        </div>
-        {fileSystems.map((fs) => (
-          <button
-            key={fs.id}
-            type="button"
-            onClick={() => setCurrentPath("/")}
-            className={`w-full text-left px-3 py-2 text-sm cursor-pointer transition ${
-              fs.id === activeFs?.id
-                ? "bg-[var(--color-accent-subtle)] text-[var(--color-accent)]"
-                : "hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-            }`}
-          >
-            {fs.name}
-          </button>
-        ))}
-      </aside>
-
-      {/* Main content */}
-      <main className="flex-1 min-w-0 overflow-hidden">
-        {activeFs ? (
-          <FileBrowser fileSystemId={activeFs.id} initialPath={currentPath} />
+    <div ref={containerRef} className="relative flex h-full">
+      <VfsSidebar
+        activeKey={activeKey}
+        onSelect={handleSwitchVfs}
+        onSelectFavorites={handleSelectFavorites}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={onToggleCollapse}
+      />
+      <div className="flex-1 min-w-0">
+        {favoritesActive ? (
+          <FinderFavoritesContent onSwitchToVfs={handleSwitchToVfsById} />
         ) : (
-          <div className="flex h-full items-center justify-center text-fg-muted">
-            选择一个存储源开始浏览
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
-
-// ─── FileBrowser (minimal inline implementation) ──────────────────────
-
-function FileBrowser({
-  fileSystemId,
-  initialPath,
-}: {
-  fileSystemId: string;
-  initialPath: string;
-}) {
-  const [path, setPath] = useState(initialPath);
-
-  const { data, isLoading, error } = api.vfs.browse.useQuery({
-    fileSystemId,
-    path,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Spin />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex h-full items-center justify-center text-red-500">
-        {error.message}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b border-black/10 dark:border-white/10 text-sm">
-        {path
-          .split("/")
-          .filter(Boolean)
-          .map((segment, i, arr) => {
-            const segPath = `/${arr.slice(0, i + 1).join("/")}`;
-            return (
-              <span key={segPath} className="flex items-center gap-1">
-                {i > 0 && <span className="text-fg-muted">/</span>}
-                <button
-                  type="button"
-                  onClick={() => setPath(segPath)}
-                  className="hover:text-[var(--color-accent)] cursor-pointer"
-                >
-                  {segment}
-                </button>
-              </span>
-            );
-          })}
-      </div>
-
-      {/* File list */}
-      <div className="flex-1 overflow-y-auto">
-        {data?.entries.map((entry) => (
-          <button
-            key={entry.path}
-            type="button"
-            onClick={() => entry.isDirectory && setPath(entry.path)}
-            className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-black/[0.04] dark:hover:bg-white/[0.04] cursor-pointer"
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center">
+                <Spin />
+              </div>
+            }
           >
-            <span className="text-sm">{entry.isDirectory ? "📁" : "📄"}</span>
-            <span className="text-sm truncate">{entry.name}</span>
-            {entry.size != null && (
-              <span className="ml-auto text-xs text-fg-muted">
-                {formatSize(entry.size)}
-              </span>
-            )}
-          </button>
-        ))}
-        {data?.entries.length === 0 && (
-          <div className="flex h-full items-center justify-center text-fg-muted">
-            空文件夹
-          </div>
+            <FileManager
+              key={fileSystemId}
+              fileSystemId={fileSystemId}
+              initialPath={initialPath}
+              sourceType={metadata.fsSourceType}
+              sourceLabel={sourceLabel}
+              onNavigate={handleNavigate}
+            />
+          </Suspense>
         )}
       </div>
     </div>
   );
-}
-
-function formatSize(bytes: number): string {
-  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
-  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
-  if (bytes >= 1e3) return `${(bytes / 1e3).toFixed(0)} KB`;
-  return `${bytes} B`;
 }
