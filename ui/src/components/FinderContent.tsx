@@ -63,6 +63,7 @@ export default function FileBrowserContent() {
       ),
     });
     replace(dirPath);
+    document.title = first.name;
   }, [fileSystemId, fileSystems, updateMetadata, replace, currentWindowId]);
 
   const handleNavigate = useCallback(
@@ -84,6 +85,7 @@ export default function FileBrowserContent() {
         favoritesActive: false,
       });
       replace(dirPath);
+      document.title = fs.name;
     },
     [fileSystemId, favoritesActive, updateMetadata, replace, currentWindowId],
   );
@@ -104,6 +106,7 @@ export default function FileBrowserContent() {
         favoritesActive: false,
       });
       replace(path);
+      document.title = fs.name;
     },
     [fileSystems, updateMetadata, replace, currentWindowId],
   );

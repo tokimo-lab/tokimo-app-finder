@@ -28,3 +28,15 @@ description = "Manage file favorites."
 schema = "finder"
 migrations_dir = "migrations"
 driver = "postgres"
+
+[[app_settings]]
+id                   = "file-previewer"
+title                = "settings.filePreviewer.title"
+icon                 = "Eye"
+component_section_id = "file-previewer"
+
+[[app_settings]]
+id                   = "file-manager"
+title                = "settings.fileManager.title"
+icon                 = "FolderOpen"
+component_section_id = "file-manager"

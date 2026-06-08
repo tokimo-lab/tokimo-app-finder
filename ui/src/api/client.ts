@@ -101,6 +101,13 @@ export interface VfsDisplayHints {
   rootPath?: string;
 }
 
+export interface ArchiveEntryInfo {
+  path: string;
+  size: number;
+  isDir: boolean;
+  encrypted?: boolean;
+}
+
 // ─── API object ───────────────────────────────────────────────────────
 
 export const api = {
