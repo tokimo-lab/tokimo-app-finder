@@ -1,0 +1,27 @@
+# Tokimo Finder app manifest
+[app]
+id          = "finder"
+display     = "Finder"
+version     = "0.1.0"
+description = "File manager with favorites, browsing, and VFS integration"
+
+[runtime]
+lifecycle    = "resident"
+binary       = "tokimo-app-finder"
+ui_dist      = "ui/dist"
+
+[ui]
+entry        = "assets/index.js"
+window_type  = "finder"
+category     = "system"
+icon         = "FolderOpen"
+image        = "page-icons/files.png"
+color        = "#3b82f6"
+width        = 1100
+height       = 700
+full_bleed   = true
+
+[database]
+schema         = "finder"
+migrations_dir = "migrations"
+driver         = "postgres"
