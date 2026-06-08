@@ -12,6 +12,7 @@ mod ctx;
 mod db;
 mod error;
 mod handlers;
+mod services;
 
 use std::sync::{Arc, OnceLock};
 
@@ -117,9 +118,11 @@ async fn run_server() -> anyhow::Result<()> {
     info!("finder: db connected");
 
     let client_slot: Arc<OnceLock<Arc<BusClient>>> = Arc::new(OnceLock::new());
+    let storage = services::storage::create_storage_from_bus(Arc::clone(&client_slot), "finder");
     let context = Arc::new(ctx::AppCtx {
         db,
         client: Arc::clone(&client_slot),
+        storage,
     });
 
     let app_socket = app_server::spawn("finder", Arc::clone(&context))
