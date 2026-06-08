@@ -4,18 +4,17 @@ import { getParentPath } from "@tokimo/ui";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFileManagerReturn } from "../components/useFileManager";
+import { useMessage } from "../hooks/use-message";
 import {
   buildDragPayload,
   buildTransferRequest,
-  collectDropFiles,
   hasDragPayload,
   isCrossStorageDrop,
   readDragPayload,
-  startUpload,
   writeDragPayload,
-} from "../hooks/stub";
-import { useMessage } from "../hooks/use-message";
-import type { CreateTransferRequest } from "../types/transfer";
+} from "../transfer/drag-drop";
+import type { CreateTransferRequest } from "../transfer/types";
+import { collectDropFiles, startUpload } from "../transfer/upload-manager";
 
 export interface MoveMutLike {
   mutate: (

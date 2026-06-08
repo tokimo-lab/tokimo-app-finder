@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { UseFileManagerReturn } from "../components/useFileManager";
-import { useTransfer, useUploadProgress } from "../hooks/stub";
+import { useUploadProgress } from "../transfer/upload-manager";
+import { useTransfer } from "../transfer/use-transfer";
 
 interface UseFinderTransferOptions {
   fm: UseFileManagerReturn;

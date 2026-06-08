@@ -1,73 +1,154 @@
 /**
- * usePreference — React hooks for the unified user_preferences API.
+ * usePreference — fetch-based preference hooks for the standalone finder app.
  *
- * 读取统一走 PreferencesContext（顶层一次 getAll，无重复请求）。
- * 写入通过 Context 的 patch/put/reset，立即乐观更新本地缓存。
+ * Calls the main server's /api/user/preferences endpoints directly.
+ * Supports arbitrary scopes (app, component, ui).
  */
 
-import { useCallback } from "react";
-import type { PreferenceItem } from "../api/client";
-import { usePreferencesContext } from "../hooks/stub";
+import { useCallback, useEffect, useState } from "react";
 
-// ── Low-level hook ────────────────────────────────────────────────────────────
+// ─── Module-level cache ───────────────────────────────────────────────
 
-/**
- * Read & mutate a single preference entry identified by (scope, scopeId).
- *
- * - `data`: current stored value (empty object `{}` if none).
- * - `patch(partial)`: deep-merge partial update.
- * - `put(value)`: overwrite entire value.
- * - `reset()`: delete (restore to default).
- */
+interface PreferenceItem {
+  scope: string;
+  scopeId: string;
+  key: string;
+  value: unknown;
+}
+
+let allPrefs: PreferenceItem[] = [];
+let loaded = false;
+let loading = false;
+const listeners = new Set<() => void>();
+
+function emit() {
+  for (const fn of listeners) fn();
+}
+
+function subscribe(fn: () => void) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+async function ensureLoaded() {
+  if (loaded || loading) return;
+  loading = true;
+  try {
+    const r = await fetch("/api/user/preferences", { credentials: "include" });
+    if (r.ok) {
+      const json = await r.json();
+      allPrefs = json.data ?? [];
+      loaded = true;
+    }
+  } catch {
+    /* ignore */
+  }
+  loading = false;
+  emit();
+}
+
+async function savePref(
+  scope: string,
+  scopeId: string,
+  key: string,
+  value: unknown,
+) {
+  await fetch("/api/user/preferences", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ scope, scopeId, key, value }),
+  });
+  const idx = allPrefs.findIndex(
+    (p) => p.scope === scope && p.scopeId === scopeId && p.key === key,
+  );
+  if (idx >= 0) {
+    allPrefs[idx] = { ...allPrefs[idx], value };
+  } else {
+    allPrefs.push({ scope, scopeId, key, value });
+  }
+  emit();
+}
+
+async function deletePref(scope: string, scopeId: string, key: string) {
+  await fetch(
+    `/api/user/preferences/${encodeURIComponent(scope)}/${encodeURIComponent(scopeId)}/${encodeURIComponent(key)}`,
+    { method: "DELETE", credentials: "include" },
+  );
+  allPrefs = allPrefs.filter(
+    (p) => !(p.scope === scope && p.scopeId === scopeId && p.key === key),
+  );
+  emit();
+}
+
+// ─── Hooks ────────────────────────────────────────────────────────────
+
+/** Low-level hook: read & mutate a single preference entry. */
 export function usePreference<T extends object = Record<string, unknown>>(
   scope: string,
   scopeId: string,
 ) {
-  const ctx = usePreferencesContext();
+  const [isMutating, setIsMutating] = useState(false);
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    ensureLoaded();
+    const unsub = subscribe(() => forceUpdate((n) => n + 1));
+    return unsub;
+  }, []);
+
+  const data =
+    (allPrefs.find((p) => p.scope === scope && p.scopeId === scopeId)
+      ?.value as T) ?? ({} as T);
 
   const patch = useCallback(
-    (partial: Partial<T>) =>
-      ctx.patch(scope, scopeId, partial as Record<string, unknown>),
-    [ctx, scope, scopeId],
+    async (partial: Partial<T>) => {
+      setIsMutating(true);
+      try {
+        for (const [key, value] of Object.entries(partial)) {
+          await savePref(scope, scopeId, key, value);
+        }
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [scope, scopeId],
   );
 
   const put = useCallback(
-    (value: T) => ctx.put(scope, scopeId, value as Record<string, unknown>),
-    [ctx, scope, scopeId],
+    async (value: T) => {
+      setIsMutating(true);
+      try {
+        for (const [key, val] of Object.entries(value)) {
+          await savePref(scope, scopeId, key, val);
+        }
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [scope, scopeId],
   );
 
-  const reset = useCallback(
-    () => ctx.reset(scope, scopeId),
-    [ctx, scope, scopeId],
-  );
+  const reset = useCallback(async () => {
+    setIsMutating(true);
+    try {
+      const keys = allPrefs
+        .filter((p) => p.scope === scope && p.scopeId === scopeId)
+        .map((p) => p.key);
+      for (const key of keys) {
+        await deletePref(scope, scopeId, key);
+      }
+    } finally {
+      setIsMutating(false);
+    }
+  }, [scope, scopeId]);
 
-  return {
-    data: ctx.get<T>(scope, scopeId),
-    isLoading: ctx.isLoading,
-    isMutating: ctx.isMutating,
-    patch,
-    put,
-    reset,
-  };
+  return { data, isLoading: !loaded, isMutating, patch, put, reset };
 }
 
-// ── Semantic wrappers ─────────────────────────────────────────────────────────
-
-/** Per-app-instance user preference. scope = "app", scopeId = app UUID. */
-export function useAppPreference<T extends object = Record<string, unknown>>(
-  appId: string,
-) {
-  return usePreference<T>("app", appId);
-}
-
-/** System-level per-app settings. scope = "app-system", scopeId = app UUID. */
-export function useAppSystemSettings<
-  T extends object = Record<string, unknown>,
->(appId: string) {
-  return usePreference<T>("app-system", appId);
-}
-
-/** System component preference. scope = "component", scopeId = component ID. */
+/** Per-component preference. scope = "component", scopeId = component ID. */
 export function useComponentPreference<
   T extends object = Record<string, unknown>,
 >(componentId: string) {
@@ -79,32 +160,4 @@ export function useUiPreference<T extends object = Record<string, unknown>>(
   key: string,
 ) {
   return usePreference<T>("ui", key);
-}
-
-// ── Bulk read ─────────────────────────────────────────────────────────────────
-
-/**
- * Read-only bulk view of all preferences (delegates to PreferencesContext).
- * Provided for compatibility; prefer usePreferencesContext() directly.
- */
-export function useAllPreferences() {
-  const ctx = usePreferencesContext();
-
-  const get = useCallback(
-    (scope: string, scopeId: string): Record<string, unknown> =>
-      ctx.get(scope, scopeId),
-    [ctx],
-  );
-
-  const getByScope = useCallback(
-    (scope: string): PreferenceItem[] => ctx.getByScope(scope),
-    [ctx],
-  );
-
-  return {
-    data: ctx.getByScope("") as PreferenceItem[], // not useful, kept for compat
-    isLoading: ctx.isLoading,
-    get,
-    getByScope,
-  };
 }

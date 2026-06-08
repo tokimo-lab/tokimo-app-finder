@@ -2,7 +2,7 @@ import { FileColumnView, type FileNode } from "@tokimo/ui";
 import { useCallback } from "react";
 import { api } from "../api/client";
 import { useFinder } from "../context";
-import { hasDragPayload } from "../hooks/stub";
+import { hasDragPayload } from "../transfer/drag-drop";
 
 /** Context-aware wrapper around FileColumnView for use inside FinderProvider. */
 export function FinderFileColumnView() {
