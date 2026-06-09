@@ -50,7 +50,7 @@ export default defineApp({
           <RuntimeProvider value={ctx}>
             <AppCtxProvider value={ctx}>
               <QueryClientProvider client={queryClient}>
-                <ConfigProvider locale={uiLocale}>
+                <ConfigProvider locale={uiLocale} dateFormat={{}}>
                   <ToastProvider>
                     <FinderContent />
                   </ToastProvider>
