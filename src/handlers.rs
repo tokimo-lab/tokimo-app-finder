@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use tokimo_bus_auth::TokimoUser;
 use uuid::Uuid;
 
-use crate::ctx::AppCtx;
+use crate::state::AppState;
 use crate::db::repos::file_favorite_repo::FileFavoriteRepo;
 use crate::error::AppError;
 
@@ -67,7 +67,7 @@ fn to_favorite_dto(m: crate::db::entities::file_favorites::Model) -> FileFavorit
 // ─── Handlers ─────────────────────────────────────────────────────────
 
 pub async fn list_favorites(
-    State(ctx): State<Arc<AppCtx>>,
+    State(ctx): State<Arc<AppState>>,
     TokimoUser { user_id }: TokimoUser,
 ) -> Result<Json<ApiResponse<Vec<FileFavoriteDto>>>, AppError> {
     let user_id = parse_uuid(&user_id)?;
@@ -89,7 +89,7 @@ pub struct ToggleFavoriteBody {
 }
 
 pub async fn toggle_favorite(
-    State(ctx): State<Arc<AppCtx>>,
+    State(ctx): State<Arc<AppState>>,
     TokimoUser { user_id }: TokimoUser,
     Json(body): Json<ToggleFavoriteBody>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {

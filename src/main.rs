@@ -8,10 +8,11 @@ mod app_server;
 mod assets;
 mod bus_clients;
 mod cli;
-mod ctx;
+mod state;
 mod db;
 mod error;
 mod handlers;
+mod router;
 mod services;
 
 use std::sync::{Arc, OnceLock};
@@ -119,7 +120,7 @@ async fn run_server() -> anyhow::Result<()> {
 
     let client_slot: Arc<OnceLock<Arc<BusClient>>> = Arc::new(OnceLock::new());
     let storage = services::storage::create_storage_from_bus(Arc::clone(&client_slot), "finder");
-    let context = Arc::new(ctx::AppCtx {
+    let context = Arc::new(state::AppState {
         db,
         client: Arc::clone(&client_slot),
         storage,

@@ -4,13 +4,13 @@
 
 use std::sync::Arc;
 
-use axum::{Router, routing::get, routing::post};
+use axum::Router;
 use tokimo_bus_protocol::{BusListener, DataPlaneSocket};
 use tracing::{error, info};
 
-use crate::{assets, ctx::AppCtx, handlers};
+use crate::{assets, router, state::AppState};
 
-pub async fn spawn(service: &str, ctx: Arc<AppCtx>) -> anyhow::Result<DataPlaneSocket> {
+pub async fn spawn(service: &str, ctx: Arc<AppState>) -> anyhow::Result<DataPlaneSocket> {
     let (listener, socket) = BusListener::bind_for_app(service)?;
     info!(?socket, "finder: app server listening");
 
@@ -25,10 +25,9 @@ pub async fn spawn(service: &str, ctx: Arc<AppCtx>) -> anyhow::Result<DataPlaneS
     Ok(socket)
 }
 
-fn build_router(ctx: Arc<AppCtx>) -> Router {
+fn build_router(ctx: Arc<AppState>) -> Router {
     Router::new()
-        .route("/favorites", get(handlers::list_favorites))
-        .route("/favorites/toggle", post(handlers::toggle_favorite))
-        .route("/assets/{*path}", get(assets::serve))
+        .merge(router::build_finder_app_routes())
+        .route("/assets/{*path}", axum::routing::get(assets::serve))
         .with_state(ctx)
 }
