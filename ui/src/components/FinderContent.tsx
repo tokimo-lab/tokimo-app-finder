@@ -136,14 +136,13 @@ export default function FileBrowserContent() {
         title={t("common.setupGuide.getStarted", { name: "Finder" })}
         description={t("common.setupGuide.finderTagline")}
         features={(
-          (t("common.setupGuide.finderFeatures", {
+          t("common.setupGuide.finderFeatures", {
             returnObjects: true,
-          }) as string[] | string)
-        )
-          .map?.((label: string, i: number) => ({
-            icon: [HardDrive, Star, Archive][i],
-            label,
-          })) ?? [{ icon: HardDrive, label: "Browse files" }]}
+          }) as string[]
+        ).map((label, i) => ({
+          icon: [HardDrive, Star, Archive][i],
+          label,
+        }))}
         actionLabel={t("common.setupGuide.finderAction")}
         actionIcon={FolderPlus}
         onAction={openVfsSettings}
