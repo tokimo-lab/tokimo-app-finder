@@ -19,7 +19,7 @@ export default defineApp({
     id: "finder",
     appName: "dashboard.menu.files",
     icon: "FolderOpen",
-    image: "page-icons/files.png",
+    image: "icon.png",
     color: "#3b82f6",
     windowType: "finder",
     defaultSize: { width: 1100, height: 700 },
