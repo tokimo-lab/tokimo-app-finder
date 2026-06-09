@@ -24,6 +24,9 @@ full_bleed   = true
 name = "tokimo-app-finder"
 description = "Manage VFS storage bucket files for the user: list/read/create/delete/move/copy, download, upload, and sync directories. Also manage file favorites."
 
+[skills]
+dir = "skills"
+
 [database]
 schema = "finder"
 migrations_dir = "migrations"
