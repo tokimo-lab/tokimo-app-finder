@@ -1,151 +1,69 @@
 /**
- * usePreference — fetch-based preference hooks for the standalone finder app.
+ * usePreference — finder preference hooks backed by the SDK's per-app
+ * DB-backed preference store (`useShellPreference`).
  *
- * Calls the main server's /api/user/preferences endpoints directly.
- * Supports arbitrary scopes (app, component, ui).
+ * The shell exposes a SINGLE flat app-scoped preference object. Finder needs
+ * arbitrary `(scope, scopeId)` namespacing, so we nest every entry under that
+ * single object as `data[scope][scopeId]` (an object of key → value). All
+ * reads/writes go through the typed shell preferences API — no raw fetch.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useRuntimeCtx, useShellPreference } from "@tokimo/sdk";
+import { useCallback, useState } from "react";
 
-// ─── Module-level cache ───────────────────────────────────────────────
+type ShellPrefShape = Record<string, Record<string, Record<string, unknown>>>;
 
-interface PreferenceItem {
-  scope: string;
-  scopeId: string;
-  key: string;
-  value: unknown;
-}
-
-let allPrefs: PreferenceItem[] = [];
-let loaded = false;
-let loading = false;
-const listeners = new Set<() => void>();
-
-function emit() {
-  for (const fn of listeners) fn();
-}
-
-function subscribe(fn: () => void) {
-  listeners.add(fn);
-  return () => {
-    listeners.delete(fn);
-  };
-}
-
-async function ensureLoaded() {
-  if (loaded || loading) return;
-  loading = true;
-  try {
-    const r = await fetch("/api/user/preferences", { credentials: "include" });
-    if (r.ok) {
-      const json = await r.json();
-      allPrefs = json.data ?? [];
-      loaded = true;
-    }
-  } catch {
-    /* ignore */
-  }
-  loading = false;
-  emit();
-}
-
-async function savePref(
-  scope: string,
-  scopeId: string,
-  key: string,
-  value: unknown,
-) {
-  await fetch("/api/user/preferences", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ scope, scopeId, key, value }),
-  });
-  const idx = allPrefs.findIndex(
-    (p) => p.scope === scope && p.scopeId === scopeId && p.key === key,
-  );
-  if (idx >= 0) {
-    allPrefs[idx] = { ...allPrefs[idx], value };
-  } else {
-    allPrefs.push({ scope, scopeId, key, value });
-  }
-  emit();
-}
-
-async function deletePref(scope: string, scopeId: string, key: string) {
-  await fetch(
-    `/api/user/preferences/${encodeURIComponent(scope)}/${encodeURIComponent(scopeId)}/${encodeURIComponent(key)}`,
-    { method: "DELETE", credentials: "include" },
-  );
-  allPrefs = allPrefs.filter(
-    (p) => !(p.scope === scope && p.scopeId === scopeId && p.key === key),
-  );
-  emit();
-}
-
-// ─── Hooks ────────────────────────────────────────────────────────────
-
-/** Low-level hook: read & mutate a single preference entry. */
+/** Low-level hook: read & mutate a single namespaced preference object. */
 export function usePreference<T extends object = Record<string, unknown>>(
   scope: string,
   scopeId: string,
 ) {
+  const ctx = useRuntimeCtx();
+  const { data: shellData, patch: shellPatch } =
+    useShellPreference<ShellPrefShape>(ctx);
   const [isMutating, setIsMutating] = useState(false);
-  const [, forceUpdate] = useState(0);
 
-  useEffect(() => {
-    ensureLoaded();
-    const unsub = subscribe(() => forceUpdate((n) => n + 1));
-    return unsub;
-  }, []);
-
-  const data =
-    (allPrefs.find((p) => p.scope === scope && p.scopeId === scopeId)
-      ?.value as T) ?? ({} as T);
+  const data = (shellData[scope]?.[scopeId] as T) ?? ({} as T);
 
   const patch = useCallback(
     async (partial: Partial<T>) => {
       setIsMutating(true);
       try {
-        for (const [key, value] of Object.entries(partial)) {
-          await savePref(scope, scopeId, key, value);
-        }
+        await shellPatch({ [scope]: { [scopeId]: partial } });
       } finally {
         setIsMutating(false);
       }
     },
-    [scope, scopeId],
+    [shellPatch, scope, scopeId],
   );
 
+  // The shell only deep-merges, so `put` shares the same merge semantics as
+  // `patch`. The finder consumers only ever write small partials, so a true
+  // overwrite isn't required — merge keeps every other scopeId untouched.
   const put = useCallback(
     async (value: T) => {
       setIsMutating(true);
       try {
-        for (const [key, val] of Object.entries(value)) {
-          await savePref(scope, scopeId, key, val);
-        }
+        await shellPatch({ [scope]: { [scopeId]: value } });
       } finally {
         setIsMutating(false);
       }
     },
-    [scope, scopeId],
+    [shellPatch, scope, scopeId],
   );
 
+  // Clear this namespaced entry back to an empty object (deep-merge can't
+  // delete keys, so reset just overwrites with `{}` for the scopeId).
   const reset = useCallback(async () => {
     setIsMutating(true);
     try {
-      const keys = allPrefs
-        .filter((p) => p.scope === scope && p.scopeId === scopeId)
-        .map((p) => p.key);
-      for (const key of keys) {
-        await deletePref(scope, scopeId, key);
-      }
+      await shellPatch({ [scope]: { [scopeId]: {} } });
     } finally {
       setIsMutating(false);
     }
-  }, [scope, scopeId]);
+  }, [shellPatch, scope, scopeId]);
 
-  return { data, isLoading: !loaded, isMutating, patch, put, reset };
+  return { data, isLoading: false, isMutating, patch, put, reset };
 }
 
 /** Per-component preference. scope = "component", scopeId = component ID. */
