@@ -1,7 +1,7 @@
 ---
-name: sync-directories
-description: "Recursively mirror a whole directory tree one-way between a storage bucket and the local filesystem (or between two buckets) using the finder CLI's sync command."
-when-to-use: "When the user wants to copy/back up/mirror an entire folder (recursively) into or out of a storage bucket, or between two buckets — not just a single file."
+name: finder-sync-directories
+description: "Recursively mirror a whole directory tree one-way between a remote storage bucket (SMB / NFS / FTP / SFTP / S3 / 网盘 cloud drive) and the local filesystem, or between two buckets — for folder backups and bulk transfers."
+when-to-use: "When the user wants to copy/back up/mirror an entire folder (recursively) into or out of a remote storage bucket, or between two buckets — not just a single file."
 argument-hint: "<src> <dst>"
 version: "0.1.0"
 context: inline
@@ -11,7 +11,7 @@ context: inline
 
 `sync` recursively copies every file under a source directory to a destination,
 creating sub-directories as needed. Use it for whole-folder backups/mirrors. For
-a single file, use the `transfer-files` skill.
+a single file, use the `finder-transfer-files` skill.
 
 ## Addressing: location syntax (read first)
 
@@ -67,6 +67,6 @@ A short progress line is printed per file, ending with `Synced N files`.
 ## Notes
 
 - One-way only: extra files already present at the destination are left in place.
-- For a single file (not a whole tree), use the `transfer-files` skill.
+- For a single file (not a whole tree), use the `finder-transfer-files` skill.
 - Driver limits apply (e.g. a read-only bucket can be a sync **source** but not a
   **destination**); the CLI surfaces the underlying driver error.
