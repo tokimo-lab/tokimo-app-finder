@@ -96,10 +96,10 @@ export const api = {
             entry: string;
             password?: string;
           }) =>
-            raw.vfs.archiveExtract.useMutation().mutateAsync({
+            raw.vfs.archiveExtractFile({
               fileSystemId: input.fileSystemId,
               path: input.path,
-              dest: input.entry,
+              entry: input.entry,
               password: input.password,
             }),
         }),

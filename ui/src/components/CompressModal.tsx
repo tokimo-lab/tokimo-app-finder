@@ -1,3 +1,4 @@
+import { useVfsMutation } from "../../api/client";
 import { Button, joinPath, Modal } from "@tokimo/ui";
 import { Lock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -43,7 +44,7 @@ export function CompressModal({
   const [archiveName, setArchiveName] = useState("");
   const [password, setPassword] = useState("");
 
-  const createMut = api.vfs.archiveCreate.useMutation();
+  const createMut = useVfsMutation(api.vfs.archiveCreate);
 
   // Derive default archive name from selection
   useEffect(() => {

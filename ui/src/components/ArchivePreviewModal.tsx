@@ -1,3 +1,4 @@
+import { useVfsMutation } from "../../api/client";
 import {
   Button,
   formatFileSize,
@@ -44,7 +45,7 @@ export function ArchivePreviewModal({
 
   // All callbacks at useMutation level so they are not dropped when React
   // StrictMode simulates unmount between the two effect invocations.
-  const listMut = api.vfs.archiveList.useMutation({
+  const listMut = useVfsMutation(api.vfs.archiveList, {
     onSuccess: (data) => {
       setEntries(data.entries);
       setFormat(data.format);
@@ -63,8 +64,8 @@ export function ArchivePreviewModal({
     // onSettled ensures loading is cleared on both success and error paths.
     onSettled: () => setLoading(false),
   });
-  const extractFileMut = api.vfs.archiveExtractFile.useMutation();
-  const extractAllMut = api.vfs.archiveExtract.useMutation();
+  const extractFileMut = useVfsMutation(api.vfs.archiveExtractFile);
+  const extractAllMut = useVfsMutation(api.vfs.archiveExtract);
 
   const loadEntries = useCallback(
     (pw?: string) => {

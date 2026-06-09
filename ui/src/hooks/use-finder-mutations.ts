@@ -1,3 +1,4 @@
+import { useVfsMutation } from "../../api/client";
 import { useWindowActions } from "@tokimo/sdk";
 import type { FileNode } from "@tokimo/ui";
 import {
@@ -53,22 +54,22 @@ export function useFinderMutations({
   const windowManager = useWindowActions();
   const message = useMessage();
 
-  const mkdirMut = api.vfs.mkdir.useMutation({ onSuccess: fm.refresh });
-  const deleteFileMut = api.vfs.deleteFile.useMutation({
+  const mkdirMut = useVfsMutation(api.vfs.mkdir, { onSuccess: fm.refresh });
+  const deleteFileMut = useVfsMutation(api.vfs.deleteFile, {
     onSuccess: fm.refresh,
   });
-  const deleteDirMut = api.vfs.deleteDir.useMutation({
+  const deleteDirMut = useVfsMutation(api.vfs.deleteDir, {
     onSuccess: fm.refresh,
   });
-  const moveMut = api.vfs.move.useMutation({ onSuccess: fm.refresh });
-  const copyMut = api.vfs.copy.useMutation({ onSuccess: fm.refresh });
-  const writeFileMut = api.vfs.writeFile.useMutation({
+  const moveMut = useVfsMutation(api.vfs.move, { onSuccess: fm.refresh });
+  const copyMut = useVfsMutation(api.vfs.copy, { onSuccess: fm.refresh });
+  const writeFileMut = useVfsMutation(api.vfs.writeFile, {
     onSuccess: fm.refresh,
   });
-  const extractMut = api.vfs.archiveExtract.useMutation({
+  const extractMut = useVfsMutation(api.vfs.archiveExtract, {
     onSuccess: fm.refresh,
   });
-  const saveFsWallpaperMut = api.user.saveFsWallpaper.useMutation();
+  const saveFsWallpaperMut = useVfsMutation(api.user.saveFsWallpaper);
   const toggleFavMut = api.fileFavorites.toggle.useMutation();
   const wallpaperPref = useUiPreference<WallpaperPrefs>("wallpaper");
   const handleRequestDelete = useCallback(() => {

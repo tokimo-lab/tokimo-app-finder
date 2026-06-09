@@ -1,9 +1,8 @@
 /**
  * Finder API client — hand-written, matching music/book pattern.
  *
- * Two base URLs:
- * - /api/apps/finder/... → favorites (proxied to app backend)
- * - /api/vfs/... → VFS operations (shared, on main server)
+ * Queries use React Query hooks. Mutations are plain async functions.
+ * No makeMutation, no mutation objects. Just functions.
  */
 import {
   type QueryKey,
@@ -28,35 +27,21 @@ type QueryOptions<T> = Omit<
 
 const API_BASE = "/api/apps/finder";
 
-// ─── Mutation helper — supports both direct call and useMutation hook ──
-
 /**
- * Creates a mutation object with:
- * - `mutate(args)`: direct async call (music/book pattern)
- * - `useMutation({ onSuccess })`: React Query hook (finder pattern)
- *
- * Uses useMutation from @tanstack/react-query directly so the bundler
- * properly tracks the hook call.
+ * Wrap a plain async function into a React Query mutation hook.
+ * Usage: const mut = useVfsMutation(api.vfs.mkdir);
+ *        mut.mutate({ fileSystemId, path });
  */
-function makeMutation<Args, Result>(
+export function useVfsMutation<Args, Result>(
   fn: (args: Args) => Promise<Result>,
+  opts?: { onSuccess?: (data: Result, args: Args) => void },
 ) {
-  const direct = fn as typeof fn & {
-    useMutation: (opts?: {
-      onSuccess?: (data: Result, args: Args) => void;
-    }) => { mutate: (args: Args) => Promise<Result>; isLoading: boolean };
-  };
-  direct.useMutation = (opts) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { mutateAsync, isPending } = useMutation({
-      mutationFn: fn,
-      onSuccess: opts?.onSuccess
-        ? (data, args) => opts.onSuccess!(data, args as Args)
-        : undefined,
-    });
-    return { mutate: mutateAsync, isLoading: isPending };
-  };
-  return direct;
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: opts?.onSuccess
+      ? (data, args) => opts.onSuccess!(data, args as Args)
+      : undefined,
+  });
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -150,7 +135,7 @@ export interface ArchiveEntryInfo {
 // ─── API object ───────────────────────────────────────────────────────
 
 export const api = {
-  // ── Favorites ──
+  // ── Favorites (React Query hooks — needs cache invalidation) ──
   fileFavorites: {
     list: {
       useQuery: (options?: QueryOptions<FileFavoriteDto[]>) =>
@@ -186,8 +171,7 @@ export const api = {
   },
 
   // ── VFS (shared, calls main server) ──
-  // Queries use React Query hooks, mutations are plain async functions
-  // (matching music/book pattern).
+  // Queries: React Query hooks. Mutations: plain async functions.
   vfs: {
     list: {
       useQuery: (options?: QueryOptions<VfsDto[]>) =>
@@ -228,125 +212,114 @@ export const api = {
         }),
     },
 
-    // ── Mutations: makeMutation wraps each to support both
-    //    direct call (music/book pattern) and useMutation hook (finder pattern). ──
+    // ── Mutations: plain async functions (music/book pattern) ──
 
-    mkdir: makeMutation((input: { fileSystemId: string; path: string }) =>
+    mkdir: (input: { fileSystemId: string; path: string }) =>
       vfsPost<void>(
         `/api/vfs/${encodeURIComponent(input.fileSystemId)}/mkdir`,
         { path: input.path },
       ),
-    ),
 
-    deleteFile: makeMutation((input: { fileSystemId: string; path: string }) =>
+    deleteFile: (input: { fileSystemId: string; path: string }) =>
       vfsPost<void>(
         `/api/vfs/${encodeURIComponent(input.fileSystemId)}/delete-file`,
         { path: input.path },
       ),
-    ),
 
-    deleteDir: makeMutation((input: { fileSystemId: string; path: string }) =>
+    deleteDir: (input: { fileSystemId: string; path: string }) =>
       vfsPost<void>(
         `/api/vfs/${encodeURIComponent(input.fileSystemId)}/delete-dir`,
         { path: input.path },
       ),
-    ),
 
-    rename: makeMutation(
-      (input: { fileSystemId: string; from: string; to: string }) =>
-        vfsPost<void>(
-          `/api/vfs/${encodeURIComponent(input.fileSystemId)}/rename`,
-          { from: input.from, to: input.to },
-        ),
-    ),
+    rename: (input: { fileSystemId: string; from: string; to: string }) =>
+      vfsPost<void>(
+        `/api/vfs/${encodeURIComponent(input.fileSystemId)}/rename`,
+        { from: input.from, to: input.to },
+      ),
 
-    copy: makeMutation(
-      (input: { fileSystemId: string; from: string; to: string }) =>
-        vfsPost<void>(
-          `/api/vfs/${encodeURIComponent(input.fileSystemId)}/copy`,
-          { from: input.from, to: input.to },
-        ),
-    ),
+    copy: (input: { fileSystemId: string; from: string; to: string }) =>
+      vfsPost<void>(
+        `/api/vfs/${encodeURIComponent(input.fileSystemId)}/copy`,
+        { from: input.from, to: input.to },
+      ),
 
-    move: makeMutation(
-      (input: { fileSystemId: string; from: string; toDir: string }) =>
-        vfsPost<void>(
-          `/api/vfs/${encodeURIComponent(input.fileSystemId)}/move`,
-          { from: input.from, toDir: input.toDir },
-        ),
-    ),
+    move: (input: {
+      fileSystemId: string;
+      from: string;
+      toDir: string;
+    }) =>
+      vfsPost<void>(
+        `/api/vfs/${encodeURIComponent(input.fileSystemId)}/move`,
+        { from: input.from, toDir: input.toDir },
+      ),
 
-    writeFile: makeMutation(
-      (input: {
-        fileSystemId: string;
-        path: string;
-        content: string;
-      }) =>
-        vfsFetch<void>(
-          `/api/vfs/${encodeURIComponent(input.fileSystemId)}/write-file`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path: input.path, content: input.content }),
-          },
-        ),
-    ),
+    writeFile: (input: {
+      fileSystemId: string;
+      path: string;
+      content: string;
+    }) =>
+      vfsFetch<void>(
+        `/api/vfs/${encodeURIComponent(input.fileSystemId)}/write-file`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: input.path, content: input.content }),
+        },
+      ),
 
-    stat: makeMutation(
-      (input: { fileSystemId: string; paths: string[] }) =>
-        vfsPost<SourceStatEntry[]>(
-          `/api/vfs/${encodeURIComponent(input.fileSystemId)}/stat`,
-          { paths: input.paths },
-        ),
-    ),
+    stat: (input: {
+      fileSystemId: string;
+      paths: string[];
+    }): Promise<SourceStatEntry[]> =>
+      vfsPost<SourceStatEntry[]>(
+        `/api/vfs/${encodeURIComponent(input.fileSystemId)}/stat`,
+        { paths: input.paths },
+      ),
 
-    archiveExtract: makeMutation(
-      (input: {
-        fileSystemId: string;
-        path: string;
-        dest?: string;
-        password?: string;
-      }) =>
-        vfsPost<void>(
-          `/api/vfs/${encodeURIComponent(input.fileSystemId)}/archive/extract`,
-          input,
-        ),
-    ),
+    archiveExtract: (input: {
+      fileSystemId: string;
+      path: string;
+      dest?: string;
+      password?: string;
+    }) =>
+      vfsPost<void>(
+        `/api/vfs/${encodeURIComponent(input.fileSystemId)}/archive/extract`,
+        input,
+      ),
 
-    archiveExtractFile: makeMutation(
-      (input: {
-        fileSystemId: string;
-        path: string;
-        entry: string;
-        dest?: string;
-        password?: string;
-      }) =>
-        vfsPost<void>(
-          `/api/vfs/${encodeURIComponent(input.fileSystemId)}/archive/extract-file`,
-          input,
-        ),
-    ),
+    archiveExtractFile: (input: {
+      fileSystemId: string;
+      path: string;
+      entry: string;
+      dest?: string;
+      password?: string;
+    }) =>
+      vfsPost<void>(
+        `/api/vfs/${encodeURIComponent(input.fileSystemId)}/archive/extract-file`,
+        input,
+      ),
 
-    archiveList: makeMutation(
-      (input: { fileSystemId: string; path: string; password?: string }) =>
-        vfsPost<{ entries: ArchiveEntryInfo[] }>(
-          `/api/vfs/${encodeURIComponent(input.fileSystemId)}/archive/list`,
-          input,
-        ),
-    ),
+    archiveList: (input: {
+      fileSystemId: string;
+      path: string;
+      password?: string;
+    }): Promise<{ entries: ArchiveEntryInfo[] }> =>
+      vfsPost(
+        `/api/vfs/${encodeURIComponent(input.fileSystemId)}/archive/list`,
+        input,
+      ),
 
-    archiveCreate: makeMutation(
-      (input: {
-        fileSystemId: string;
-        archivePath: string;
-        sources: string[];
-        password?: string;
-      }) =>
-        vfsPost<void>(
-          `/api/vfs/${encodeURIComponent(input.fileSystemId)}/archive/create`,
-          input,
-        ),
-    ),
+    archiveCreate: (input: {
+      fileSystemId: string;
+      archivePath: string;
+      sources: string[];
+      password?: string;
+    }) =>
+      vfsPost<void>(
+        `/api/vfs/${encodeURIComponent(input.fileSystemId)}/archive/create`,
+        input,
+      ),
 
     uploadFile: {
       mutate: async (input: {
@@ -370,12 +343,11 @@ export const api = {
 
   // ── User prefs ──
   user: {
-    saveFsWallpaper: makeMutation((body: { vfsId: string; path: string }) =>
+    saveFsWallpaper: (body: { vfsId: string; path: string }) =>
       apiFetch<void>("/api/user/fs-wallpaper", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       }),
-    ),
   },
 };
