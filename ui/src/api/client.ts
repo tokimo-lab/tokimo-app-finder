@@ -30,30 +30,33 @@ const API_BASE = "/api/apps/finder";
 
 // ─── Mutation helper — supports both direct call and useMutation hook ──
 
-interface MutationMethods<Args, Result> {
-  /** Direct async call (music/book pattern). */
-  mutate: (args: Args) => Promise<Result>;
-  /** React Query hook (finder pattern, for onSuccess cache invalidation). */
-  useMutation: (opts?: {
-    onSuccess?: (data: Result, args: Args) => void;
-  }) => { mutate: (args: Args) => Promise<Result>; isLoading: boolean };
-}
-
+/**
+ * Creates a mutation object with:
+ * - `mutate(args)`: direct async call (music/book pattern)
+ * - `useMutation({ onSuccess })`: React Query hook (finder pattern)
+ *
+ * Uses useMutation from @tanstack/react-query directly so the bundler
+ * properly tracks the hook call.
+ */
 function makeMutation<Args, Result>(
   fn: (args: Args) => Promise<Result>,
-): MutationMethods<Args, Result> {
-  return {
-    mutate: fn,
-    useMutation: (opts) => {
-      const { mutateAsync, isPending } = useMutation({
-        mutationFn: fn,
-        onSuccess: opts?.onSuccess
-          ? (data, args) => opts.onSuccess!(data, args as Args)
-          : undefined,
-      });
-      return { mutate: mutateAsync, isLoading: isPending };
-    },
+) {
+  const direct = fn as typeof fn & {
+    useMutation: (opts?: {
+      onSuccess?: (data: Result, args: Args) => void;
+    }) => { mutate: (args: Args) => Promise<Result>; isLoading: boolean };
   };
+  direct.useMutation = (opts) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { mutateAsync, isPending } = useMutation({
+      mutationFn: fn,
+      onSuccess: opts?.onSuccess
+        ? (data, args) => opts.onSuccess!(data, args as Args)
+        : undefined,
+    });
+    return { mutate: mutateAsync, isLoading: isPending };
+  };
+  return direct;
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
