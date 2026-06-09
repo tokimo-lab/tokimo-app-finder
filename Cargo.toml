@@ -28,9 +28,6 @@ mime_guess        = "2"
 anyhow            = "1"
 axum              = { version = "0.8", features = ["json"] }
 ts-rs             = { version = "12", features = ["serde-json-impl"] }
-async-trait       = "0.1"
-base64            = "0.22"
-bytes             = "1"
 urlencoding       = "2"
 
 [profile.release]

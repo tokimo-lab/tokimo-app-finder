@@ -30,14 +30,6 @@ pub fn ok<T: Serialize>(data: T) -> Json<ApiResponse<T>> {
     })
 }
 
-pub fn ok_empty() -> Json<ApiResponse<()>> {
-    Json(ApiResponse {
-        success: true,
-        data: None,
-        error: None,
-    })
-}
-
 // ─── Output DTO ───────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
