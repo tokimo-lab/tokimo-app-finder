@@ -1,4 +1,4 @@
-import { useWindowActions, type WindowType } from "@tokimo/sdk";
+import { useViewer, type ViewerWindowType } from "@tokimo/sdk";
 import type { FileNode } from "@tokimo/ui";
 import {
   FileGrid,
@@ -9,9 +9,8 @@ import {
 import { Star, StarOff } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { FileFavoriteDto } from "../api/client";
+import type { FileFavoriteDto, SourceStatEntry } from "../api/client";
 import { api } from "../api/client";
-import type { FsStat } from "../types";
 
 interface FinderFavoritesContentProps {
   /** Called when user double-clicks a directory — navigates to that VFS at that path */
@@ -22,7 +21,7 @@ export function FinderFavoritesContent({
   onSwitchToVfs,
 }: FinderFavoritesContentProps) {
   const { t } = useTranslation();
-  const windowManager = useWindowActions();
+  const { openFileViewer } = useViewer();
   const { data: favorites, refetch } = api.fileFavorites.list.useQuery();
   const { data: vfsList } = api.vfs.list.useQuery();
   const toggleMut = api.fileFavorites.toggle.useMutation();
@@ -41,7 +40,7 @@ export function FinderFavoritesContent({
 
   // Per-vfs stat cache: { [vfsId]: Map<path, FsStat> }
   const [statCaches, setStatCaches] = useState<
-    Record<string, Map<string, FsStat>>
+    Record<string, Map<string, SourceStatEntry>>
   >({});
   const statRequestedRef = useRef<Record<string, Set<string>>>({});
 
@@ -66,8 +65,8 @@ export function FinderFavoritesContent({
         if (pending.length === 0) continue;
         for (const p of pending) requested.add(p);
 
-        api.vfs.stat
-          .mutate({ fileSystemId: vfsId, paths: pending })
+        api.vfs
+          .stat({ fileSystemId: vfsId, paths: pending })
           .then((stats) => {
             setStatCaches((prev) => {
               const next = { ...prev };
@@ -127,9 +126,9 @@ export function FinderFavoritesContent({
         onSwitchToVfs(fav.vfsId, fav.path);
       } else {
         const kind = getPreviewKind(node.name);
-        const winType: WindowType = kind === "none" ? "hex" : kind;
-        windowManager.openWindow({
-          type: winType,
+        const winType: ViewerWindowType = kind === "none" ? "hex" : kind;
+        openFileViewer({
+          viewerType: winType,
           title: node.name,
           route: node.path,
           filePath: node.path,
@@ -138,7 +137,7 @@ export function FinderFavoritesContent({
         });
       }
     },
-    [favorites, onSwitchToVfs, windowManager],
+    [favorites, onSwitchToVfs, openFileViewer],
   );
 
   const handleUnfavorite = useCallback(

@@ -1,5 +1,5 @@
 import { useWindowActions, useWindowNav } from "@tokimo/sdk";
-import { AppSetupGuide, Spin } from "@tokimo/ui";
+import { AppSetupGuide, type AppSetupGuideProps, Spin } from "@tokimo/ui";
 import { Archive, FolderPlus, HardDrive, Star } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,11 @@ const FileManager = lazy(() =>
     default: m.FileManager,
   })),
 );
+
+// The app bundles its own lucide-react copy whose `LucideIcon` type is
+// nominally distinct from the one @tokimo/ui resolves. Bridge through this
+// alias so icon props line up without `any`.
+type GuideIcon = NonNullable<AppSetupGuideProps["actionIcon"]>;
 
 function buildBrowseLabel(
   type: string,
@@ -140,11 +145,11 @@ export default function FileBrowserContent() {
             returnObjects: true,
           }) as string[]
         ).map((label, i) => ({
-          icon: [HardDrive, Star, Archive][i],
+          icon: [HardDrive, Star, Archive][i] as unknown as GuideIcon,
           label,
         }))}
         actionLabel={t("common.setupGuide.finderAction")}
-        actionIcon={FolderPlus}
+        actionIcon={FolderPlus as unknown as GuideIcon}
         onAction={openVfsSettings}
       />
     );
@@ -176,7 +181,7 @@ export default function FileBrowserContent() {
               key={fileSystemId}
               fileSystemId={fileSystemId}
               initialPath={initialPath}
-              sourceType={metadata.fsSourceType}
+              sourceType={metadata.fsSourceType as string | undefined}
               sourceLabel={sourceLabel}
               onNavigate={handleNavigate}
             />

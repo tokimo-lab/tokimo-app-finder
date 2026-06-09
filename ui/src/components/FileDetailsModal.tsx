@@ -1,5 +1,4 @@
-import { useDateFormat } from "@tokimo/sdk";
-import { Modal, Tag } from "@tokimo/ui";
+import { Modal, Tag, useDateFormat } from "@tokimo/ui";
 import {
   Captions,
   FolderTree,

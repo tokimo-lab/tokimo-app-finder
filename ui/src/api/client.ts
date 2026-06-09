@@ -100,7 +100,7 @@ export interface SourceStatEntry {
   path: string;
   size?: number | null;
   modifiedAt?: string | null;
-  mode?: number | null;
+  mode?: string | null;
 }
 
 export interface DirMeta {
@@ -155,14 +155,11 @@ export const api = {
             name: string;
             isDirectory: boolean;
           }) =>
-            apiFetch<{ isFavorited: boolean }>(
-              `${API_BASE}/favorites/toggle`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-              },
-            ),
+            apiFetch<{ isFavorited: boolean }>(`${API_BASE}/favorites/toggle`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            }),
           onSuccess: () =>
             qc.invalidateQueries({ queryKey: ["file-favorites"] }),
         });
@@ -195,6 +192,13 @@ export const api = {
           enabled: !!input.fileSystemId,
           ...options,
         }),
+      fetch: (input: {
+        fileSystemId: string;
+        path: string;
+      }): Promise<BrowseDirectoryResponse> =>
+        vfsFetch<BrowseDirectoryResponse>(
+          `/api/vfs/${encodeURIComponent(input.fileSystemId)}/browse?path=${encodeURIComponent(input.path)}`,
+        ),
     },
     dirMeta: {
       useQuery: (
@@ -239,20 +243,16 @@ export const api = {
       ),
 
     copy: (input: { fileSystemId: string; from: string; to: string }) =>
-      vfsPost<void>(
-        `/api/vfs/${encodeURIComponent(input.fileSystemId)}/copy`,
-        { from: input.from, to: input.to },
-      ),
+      vfsPost<void>(`/api/vfs/${encodeURIComponent(input.fileSystemId)}/copy`, {
+        from: input.from,
+        to: input.to,
+      }),
 
-    move: (input: {
-      fileSystemId: string;
-      from: string;
-      toDir: string;
-    }) =>
-      vfsPost<void>(
-        `/api/vfs/${encodeURIComponent(input.fileSystemId)}/move`,
-        { from: input.from, toDir: input.toDir },
-      ),
+    move: (input: { fileSystemId: string; from: string; toDir: string }) =>
+      vfsPost<void>(`/api/vfs/${encodeURIComponent(input.fileSystemId)}/move`, {
+        from: input.from,
+        toDir: input.toDir,
+      }),
 
     writeFile: (input: {
       fileSystemId: string;
@@ -304,7 +304,7 @@ export const api = {
       fileSystemId: string;
       path: string;
       password?: string;
-    }): Promise<{ entries: ArchiveEntryInfo[] }> =>
+    }): Promise<{ format: string; entries: ArchiveEntryInfo[] }> =>
       vfsPost(
         `/api/vfs/${encodeURIComponent(input.fileSystemId)}/archive/list`,
         input,
@@ -343,8 +343,11 @@ export const api = {
 
   // ── User prefs ──
   user: {
-    saveFsWallpaper: (body: { vfsId: string; path: string }) =>
-      apiFetch<void>("/api/user/fs-wallpaper", {
+    saveFsWallpaper: (body: {
+      fileSystemId: string;
+      path: string;
+    }): Promise<{ key: string }> =>
+      apiFetch<{ key: string }>("/api/user/save-fs-wallpaper", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

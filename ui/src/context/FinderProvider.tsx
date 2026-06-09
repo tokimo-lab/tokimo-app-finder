@@ -90,7 +90,10 @@ export function FinderProvider({
   });
 
   // 7. Move mutation — created once here so both drag-drop and paste share it
-  const moveMut = useMutation({ mutationFn: api.vfs.move, onSuccess: fm.refresh });
+  const moveMut = useMutation({
+    mutationFn: api.vfs.move,
+    onSuccess: fm.refresh,
+  });
 
   // 8. Context menu target ref — shared between interactions (sets) and mutations (reads)
   const contextMenuTarget = useRef<FileNode | null>(null);

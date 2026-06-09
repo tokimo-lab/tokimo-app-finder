@@ -9,8 +9,8 @@ import {
   type ViewMode,
 } from "@tokimo/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { SourceStatEntry } from "../api/client";
 import { api } from "../api/client";
-import type { FsStat } from "../types";
 import {
   clearFileClipboard,
   setFileClipboard,
@@ -48,7 +48,7 @@ export interface UseFileManagerReturn {
   nodes: FileNode[];
   isLoading: boolean;
   isFetching: boolean;
-  statCache: Map<string, FsStat>;
+  statCache: Map<string, SourceStatEntry>;
 
   // Selection
   selectedPaths: Set<string>;
@@ -117,7 +117,7 @@ export function useFileManager({
   const [showNewFolder, setShowNewFolder] = useState(false);
 
   // ─── Stat cache ───
-  const [statCache, setStatCache] = useState<Map<string, FsStat>>(
+  const [statCache, setStatCache] = useState<Map<string, SourceStatEntry>>(
     () => new Map(),
   );
   const statRequestedRef = useRef(new Set<string>());
@@ -135,7 +135,7 @@ export function useFileManager({
   );
   const folderLabels: Record<string, number> = dirMetaQuery.data?.labels ?? {};
 
-  const parentPath = browseQuery.data?.parentPath ?? null;
+  const parentPath = browseQuery.data?.parent ?? null;
   const rawEntries = browseQuery.data?.entries ?? [];
 
   // Merge stat cache into entries, filter hidden files, and sort
@@ -181,8 +181,8 @@ export function useFileManager({
       if (pending.length === 0) return;
       for (const p of pending) statRequestedRef.current.add(p);
 
-      api.vfs.stat
-        .mutate({ fileSystemId, paths: pending })
+      api.vfs
+        .stat({ fileSystemId, paths: pending })
         .then((stats) => {
           setStatCache((prev) => {
             const next = new Map(prev);

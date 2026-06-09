@@ -1,5 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
-import { useWindowActions } from "@tokimo/sdk";
+import {
+  useViewer,
+  useWindowActions,
+  type ViewerWindowType,
+} from "@tokimo/sdk";
 import type { FileNode } from "@tokimo/ui";
 import {
   getPreviewKind,
@@ -16,8 +20,8 @@ import type { UseFileManagerReturn } from "../components/useFileManager";
 import { useMessage } from "../hooks/use-message";
 import { useUiPreference } from "../hooks/use-preference";
 import { buildFileUrl } from "../lib/file-url";
+import type { CreateTransferRequest } from "../transfer/types";
 import type { WallpaperPrefs } from "../types";
-import type { CreateTransferRequest } from "../types/transfer";
 
 interface UseFinderMutationsOptions {
   fm: UseFileManagerReturn;
@@ -52,24 +56,40 @@ export function useFinderMutations({
 }: UseFinderMutationsOptions) {
   const { t } = useTranslation();
   const windowManager = useWindowActions();
+  const { openFileViewer } = useViewer();
   const message = useMessage();
 
-  const mkdirMut = useMutation({ mutationFn: api.vfs.mkdir, onSuccess: fm.refresh });
-  const deleteFileMut = useMutation({ mutationFn: api.vfs.deleteFile,
+  const mkdirMut = useMutation({
+    mutationFn: api.vfs.mkdir,
     onSuccess: fm.refresh,
   });
-  const deleteDirMut = useMutation({ mutationFn: api.vfs.deleteDir,
+  const deleteFileMut = useMutation({
+    mutationFn: api.vfs.deleteFile,
     onSuccess: fm.refresh,
   });
-  const moveMut = useMutation({ mutationFn: api.vfs.move, onSuccess: fm.refresh });
-  const copyMut = useMutation({ mutationFn: api.vfs.copy, onSuccess: fm.refresh });
-  const writeFileMut = useMutation({ mutationFn: api.vfs.writeFile,
+  const deleteDirMut = useMutation({
+    mutationFn: api.vfs.deleteDir,
     onSuccess: fm.refresh,
   });
-  const extractMut = useMutation({ mutationFn: api.vfs.archiveExtract,
+  const moveMut = useMutation({
+    mutationFn: api.vfs.move,
     onSuccess: fm.refresh,
   });
-  const saveFsWallpaperMut = useMutation({ mutationFn: api.user.saveFsWallpaper });
+  const copyMut = useMutation({
+    mutationFn: api.vfs.copy,
+    onSuccess: fm.refresh,
+  });
+  const writeFileMut = useMutation({
+    mutationFn: api.vfs.writeFile,
+    onSuccess: fm.refresh,
+  });
+  const extractMut = useMutation({
+    mutationFn: api.vfs.archiveExtract,
+    onSuccess: fm.refresh,
+  });
+  const saveFsWallpaperMut = useMutation({
+    mutationFn: api.user.saveFsWallpaper,
+  });
   const toggleFavMut = api.fileFavorites.toggle.useMutation();
   const wallpaperPref = useUiPreference<WallpaperPrefs>("wallpaper");
   const handleRequestDelete = useCallback(() => {
@@ -212,11 +232,9 @@ export function useFinderMutations({
         fm.navigateTo(node.path);
       } else {
         const kind = getPreviewKind(node.name);
-        const winType = (kind === "none" ? "hex" : kind) as Parameters<
-          typeof windowManager.openWindow
-        >[0]["type"];
-        windowManager.openWindow({
-          type: winType,
+        const winType: ViewerWindowType = kind === "none" ? "hex" : kind;
+        openFileViewer({
+          viewerType: winType,
           title: node.name,
           route: node.path,
           filePath: node.path,
@@ -225,7 +243,7 @@ export function useFinderMutations({
         });
       }
     },
-    [fm, windowManager, fileSystemId],
+    [fm, openFileViewer, fileSystemId],
   );
 
   const handleTransferTo = useCallback(
@@ -285,11 +303,9 @@ export function useFinderMutations({
         const node = contextMenuTarget.current;
         if (node && !node.isDirectory) {
           const kind = getPreviewKind(node.name);
-          const winType = (kind === "none" ? "hex" : kind) as Parameters<
-            typeof windowManager.openWindow
-          >[0]["type"];
-          windowManager.openWindow({
-            type: winType,
+          const winType: ViewerWindowType = kind === "none" ? "hex" : kind;
+          openFileViewer({
+            viewerType: winType,
             title: node.name,
             route: node.path,
             filePath: node.path,
@@ -392,7 +408,7 @@ export function useFinderMutations({
   }, [
     contextMenuTarget,
     handleOpen,
-    windowManager,
+    openFileViewer,
     fileSystemId,
     saveFsWallpaperMut,
     wallpaperPref,

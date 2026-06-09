@@ -3,11 +3,11 @@
  * @/system import path.
  */
 
-export type { WindowType } from "@tokimo/sdk";
+export type { ViewerWindowType } from "@tokimo/sdk";
 export {
   RuntimeProvider,
-  useDateFormat,
   useWindowActions,
   useWindowNav,
   useWindows,
 } from "@tokimo/sdk";
+export { useDateFormat } from "@tokimo/ui";

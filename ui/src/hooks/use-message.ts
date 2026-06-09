@@ -1,11 +1,9 @@
-import { useShellApi } from "@tokimo/sdk";
+import { useToast } from "@tokimo/sdk";
 
+/**
+ * Toast-based message shim. Maps message.success/error/info/warning(text)
+ * to the SDK toast API (mirrors how other standalone apps surface messages).
+ */
 export function useMessage() {
-  const { notify } = useShellApi();
-  return {
-    success: (msg: string) => notify({ type: "info", message: msg }),
-    error: (msg: string) => notify({ type: "error", message: msg }),
-    warning: (msg: string) => notify({ type: "warning", message: msg }),
-    info: (msg: string) => notify({ type: "info", message: msg }),
-  };
+  return useToast();
 }
