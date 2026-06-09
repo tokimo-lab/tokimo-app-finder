@@ -93,7 +93,7 @@ export interface BrowseEntry {
 
 export interface BrowseDirectoryResponse {
   entries: BrowseEntry[];
-  parent: string | null;
+  parentPath: string | null;
 }
 
 export interface SourceStatEntry {

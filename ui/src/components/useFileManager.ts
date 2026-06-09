@@ -135,7 +135,7 @@ export function useFileManager({
   );
   const folderLabels: Record<string, number> = dirMetaQuery.data?.labels ?? {};
 
-  const parentPath = browseQuery.data?.parent ?? null;
+  const parentPath = browseQuery.data?.parentPath ?? null;
   const rawEntries = browseQuery.data?.entries ?? [];
 
   // Merge stat cache into entries, filter hidden files, and sort
