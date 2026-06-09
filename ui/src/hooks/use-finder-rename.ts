@@ -1,4 +1,4 @@
-import { useVfsMutation } from "../../api/client";
+import { useMutation } from "@tanstack/react-query";
 import type { FileNode } from "@tokimo/ui";
 import { getParentPath, joinPath, useInlineRename } from "@tokimo/ui";
 import { useCallback } from "react";
@@ -16,7 +16,7 @@ export function useFinderRename({
   fileSystemId,
   readOnly,
 }: UseFinderRenameOptions) {
-  const renameMut = useVfsMutation(api.vfs.rename);
+  const renameMut = useMutation({ mutationFn: api.vfs.rename });
 
   const renameFn = useCallback(
     async (oldPath: string, newName: string) => {

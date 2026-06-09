@@ -1,4 +1,4 @@
-import { useVfsMutation } from "../../../api/client";
+import { useMutation } from "@tanstack/react-query";
 import type { FileNode } from "@tokimo/ui";
 import {
   getPreviewKind,
@@ -54,22 +54,22 @@ export function useFinderMutations({
   const windowManager = useWindowActions();
   const message = useMessage();
 
-  const mkdirMut = useVfsMutation(api.vfs.mkdir, { onSuccess: fm.refresh });
-  const deleteFileMut = useVfsMutation(api.vfs.deleteFile, {
+  const mkdirMut = useMutation({ mutationFn: api.vfs.mkdir, onSuccess: fm.refresh });
+  const deleteFileMut = useMutation({ mutationFn: api.vfs.deleteFile,
     onSuccess: fm.refresh,
   });
-  const deleteDirMut = useVfsMutation(api.vfs.deleteDir, {
+  const deleteDirMut = useMutation({ mutationFn: api.vfs.deleteDir,
     onSuccess: fm.refresh,
   });
-  const moveMut = useVfsMutation(api.vfs.move, { onSuccess: fm.refresh });
-  const copyMut = useVfsMutation(api.vfs.copy, { onSuccess: fm.refresh });
-  const writeFileMut = useVfsMutation(api.vfs.writeFile, {
+  const moveMut = useMutation({ mutationFn: api.vfs.move, onSuccess: fm.refresh });
+  const copyMut = useMutation({ mutationFn: api.vfs.copy, onSuccess: fm.refresh });
+  const writeFileMut = useMutation({ mutationFn: api.vfs.writeFile,
     onSuccess: fm.refresh,
   });
-  const extractMut = useVfsMutation(api.vfs.archiveExtract, {
+  const extractMut = useMutation({ mutationFn: api.vfs.archiveExtract,
     onSuccess: fm.refresh,
   });
-  const saveFsWallpaperMut = useVfsMutation(api.user.saveFsWallpaper);
+  const saveFsWallpaperMut = useMutation({ mutationFn: api.user.saveFsWallpaper });
   const toggleFavMut = api.fileFavorites.toggle.useMutation();
   const wallpaperPref = useUiPreference<WallpaperPrefs>("wallpaper");
   const handleRequestDelete = useCallback(() => {

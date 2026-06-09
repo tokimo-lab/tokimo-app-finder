@@ -1,4 +1,4 @@
-import { useVfsMutation } from "../../../api/client";
+import { useMutation } from "@tanstack/react-query";
 import type { FileNode, ViewMode } from "@tokimo/ui";
 import { useCallback, useRef, useState } from "react";
 import { api } from "../../generated/rust-api";
@@ -90,7 +90,7 @@ export function FinderProvider({
   });
 
   // 7. Move mutation — created once here so both drag-drop and paste share it
-  const moveMut = useVfsMutation(api.vfs.move, { onSuccess: fm.refresh });
+  const moveMut = useMutation({ mutationFn: api.vfs.move, onSuccess: fm.refresh });
 
   // 8. Context menu target ref — shared between interactions (sets) and mutations (reads)
   const contextMenuTarget = useRef<FileNode | null>(null);
