@@ -22,7 +22,7 @@ full_bleed   = true
 
 [cli]
 name = "tokimo-app-finder"
-description = "Manage file favorites."
+description = "Manage VFS storage bucket files for the user: list/read/create/delete/move/copy, download, upload, and sync directories. Also manage file favorites."
 
 [database]
 schema = "finder"

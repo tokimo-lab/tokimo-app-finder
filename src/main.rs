@@ -2,18 +2,22 @@
 //!
 //! CLI / Server 双模二进制。
 
+// This binary is a CLI whose primary output channel is stdout/stderr, so the
+// `print_*` restriction lints (warn at workspace level) do not apply here.
+#![allow(clippy::print_stdout, clippy::print_stderr)]
+
 const MANIFEST: &str = include_str!("../tokimo-app.toml");
 
 mod app_server;
 mod assets;
 mod bus_clients;
 mod cli;
-mod state;
 mod db;
 mod error;
 mod handlers;
 mod router;
 mod services;
+mod state;
 
 use std::sync::{Arc, OnceLock};
 
@@ -48,6 +52,110 @@ enum Command {
     Favorites {
         #[command(subcommand)]
         cmd: Option<FavoritesCmd>,
+    },
+
+    /// List all storage buckets (id, name, type) available to the user.
+    ///
+    /// Use a bucket's name or id with the other commands as <bucket>.
+    Buckets,
+
+    /// List a directory inside a storage bucket.
+    ///
+    /// Columns: T (d=dir, -=file), SIZE (bytes), MODIFIED, NAME.
+    Ls {
+        /// Storage bucket name or id (run `buckets` to list).
+        bucket: String,
+        /// Directory path inside the bucket (default: `/`).
+        #[arg(default_value = "/")]
+        path: String,
+    },
+
+    /// Show metadata (size, modified time, mode) for one file or directory.
+    Stat {
+        /// Storage bucket name or id.
+        bucket: String,
+        /// Path inside the bucket.
+        path: String,
+    },
+
+    /// Print a text file's contents to stdout (decoded as UTF-8, lossy).
+    Cat {
+        /// Storage bucket name or id.
+        bucket: String,
+        /// File path inside the bucket.
+        path: String,
+    },
+
+    /// Create a directory inside a storage bucket.
+    Mkdir {
+        /// Storage bucket name or id.
+        bucket: String,
+        /// Directory path to create.
+        path: String,
+    },
+
+    /// Delete a file; pass -r to delete a directory recursively.
+    Rm {
+        /// Storage bucket name or id.
+        bucket: String,
+        /// Path to delete.
+        path: String,
+        /// Delete a directory and its contents recursively.
+        #[arg(short, long)]
+        recursive: bool,
+    },
+
+    /// Move or rename a path within a storage bucket.
+    Mv {
+        /// Storage bucket name or id.
+        bucket: String,
+        /// Source path inside the bucket.
+        src: String,
+        /// Destination path inside the bucket.
+        dst: String,
+    },
+
+    /// Copy a path within a storage bucket.
+    Cp {
+        /// Storage bucket name or id.
+        bucket: String,
+        /// Source path inside the bucket.
+        src: String,
+        /// Destination path inside the bucket.
+        dst: String,
+    },
+
+    /// Download a remote file to the local filesystem (streamed to disk).
+    Download {
+        /// Storage bucket name or id.
+        bucket: String,
+        /// Remote file path inside the bucket.
+        remote_path: String,
+        /// Local destination path (default: basename of remote in CWD).
+        local_dest: Option<String>,
+    },
+
+    /// Upload a local file to a remote path (multipart upload).
+    Upload {
+        /// Storage bucket name or id.
+        bucket: String,
+        /// Local source file path.
+        local_src: String,
+        /// Remote destination path (including the target file name).
+        remote_path: String,
+    },
+
+    /// One-way recursive mirror between a bucket and/or the local filesystem.
+    ///
+    /// Address each side as `bucketName:/path` for a storage bucket, or a plain
+    /// local path otherwise. Supports local→remote, remote→local and
+    /// remote→remote. One-way only: files at the destination that are missing
+    /// at the source are NOT deleted.
+    Sync {
+        /// Source: `bucketName:/path` or a local path.
+        src: String,
+        /// Destination: `bucketName:/path` or a local path.
+        dst: String,
     },
 }
 
@@ -100,6 +208,33 @@ async fn main() -> anyhow::Result<()> {
                     std::process::exit(0);
                 }
                 Command::Favorites { cmd: Some(c) } => cli::run_favorites(auth, c).await,
+                Command::Buckets => cli::files::run_buckets(auth).await,
+                Command::Ls { bucket, path } => cli::files::run_ls(auth, bucket, path).await,
+                Command::Stat { bucket, path } => cli::files::run_stat(auth, bucket, path).await,
+                Command::Cat { bucket, path } => cli::files::run_cat(auth, bucket, path).await,
+                Command::Mkdir { bucket, path } => cli::files::run_mkdir(auth, bucket, path).await,
+                Command::Rm {
+                    bucket,
+                    path,
+                    recursive,
+                } => cli::files::run_rm(auth, bucket, path, recursive).await,
+                Command::Mv { bucket, src, dst } => {
+                    cli::files::run_mv(auth, bucket, src, dst).await
+                }
+                Command::Cp { bucket, src, dst } => {
+                    cli::files::run_cp(auth, bucket, src, dst).await
+                }
+                Command::Download {
+                    bucket,
+                    remote_path,
+                    local_dest,
+                } => cli::files::run_download(auth, bucket, remote_path, local_dest).await,
+                Command::Upload {
+                    bucket,
+                    local_src,
+                    remote_path,
+                } => cli::files::run_upload(auth, bucket, local_src, remote_path).await,
+                Command::Sync { src, dst } => cli::files::run_sync(auth, src, dst).await,
             };
             if let Err(error) = result {
                 eprintln!("Error: {error:#}");

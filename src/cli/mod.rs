@@ -1,11 +1,17 @@
 //! CLI entrypoints for finder.
 
+pub mod files;
+pub mod http;
+
 use anyhow::Context;
 use tokimo_bus_auth::db::verify_token;
 use tokimo_bus_cli::{Credentials, TokimoAuthArgs};
 use uuid::Uuid;
 
-use crate::{FavoritesCmd, db::{init_pool, repos::file_favorite_repo::FileFavoriteRepo}};
+use crate::{
+    FavoritesCmd,
+    db::{init_pool, repos::file_favorite_repo::FileFavoriteRepo},
+};
 
 pub async fn run_favorites(auth: TokimoAuthArgs, cmd: FavoritesCmd) -> anyhow::Result<()> {
     let (db, user_id) = init(auth).await?;
@@ -28,9 +34,10 @@ pub async fn run_favorites(auth: TokimoAuthArgs, cmd: FavoritesCmd) -> anyhow::R
             }
         }
         FavoritesCmd::Remove { vfs_id, path } => {
-            let removed = FileFavoriteRepo::toggle(&db, user_id, vfs_id, path, String::new(), false)
-                .await
-                .context("remove favorite failed")?;
+            let removed =
+                FileFavoriteRepo::toggle(&db, user_id, vfs_id, path, String::new(), false)
+                    .await
+                    .context("remove favorite failed")?;
             if !removed {
                 println!("Removed from favorites.");
             } else {
