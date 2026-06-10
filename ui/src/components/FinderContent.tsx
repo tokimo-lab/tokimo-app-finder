@@ -169,7 +169,7 @@ export default function FileBrowserContent() {
         collapsed={sidebarCollapsed}
         onToggleCollapse={onToggleCollapse}
       />
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 bg-[var(--color-surface-content)]">
         {favoritesActive ? (
           <FinderFavoritesContent onSwitchToVfs={handleSwitchToVfsById} />
         ) : (
