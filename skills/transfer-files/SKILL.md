@@ -1,5 +1,5 @@
 ---
-name: finder-transfer-files
+name: transfer-files
 description: "Transfer a single file between a remote storage bucket (SMB / NFS / FTP / SFTP / S3 / 网盘 cloud drive) and the local filesystem: download a remote file to local disk, or upload a local file into the bucket."
 when-to-use: "When the user wants to download a file out of a remote storage bucket (SMB / NFS / S3 / 网盘) to local disk, or upload/save a local file into one of their buckets."
 argument-hint: "<bucket name> <path>"
@@ -10,7 +10,7 @@ context: inline
 # Download / Upload a File
 
 Move one file at a time between a Tokimo **storage bucket** and the local
-filesystem. (To mirror an entire directory tree, use the `finder-sync-directories`
+filesystem. (To mirror an entire directory tree, use the `sync-directories`
 skill instead.)
 
 ## Choosing the bucket (read first)
@@ -76,6 +76,6 @@ tokimo-app-finder upload backup ./app.toml /configs/app.toml
 - `download` streams to disk; `upload` currently reads the whole local file into
   memory before sending, so prefer it for reasonably sized files.
 - To create the destination directory for an upload, use `mkdir` (see the
-  `finder-manage-files` skill).
+  `manage-files` skill).
 - For recursive, whole-folder transfers in either direction, use the
-  `finder-sync-directories` skill.
+  `sync-directories` skill.

@@ -1,5 +1,5 @@
 ---
-name: finder-manage-files
+name: manage-files
 description: "Browse and manage the user's files on a remote storage bucket (SMB / NFS / FTP / SFTP / S3 object storage / 网盘 cloud drive): list directories, read text files, and create, delete, rename, move, or copy files and folders."
 when-to-use: "When the user wants to look at, find, inspect, organize, rename, move, copy, or delete files/folders that live on one of their remote storage buckets (SMB / NFS / FTP / SFTP / S3 / 网盘)."
 argument-hint: "<bucket name> [path]"
@@ -65,7 +65,7 @@ So `<bucket>` is either a name (`media`) or, to disambiguate, an id
    ```
 
    `cat` decodes the file as UTF-8 text — use it for text files, not binaries
-   (use the `finder-transfer-files` skill to download binaries).
+   (use the `transfer-files` skill to download binaries).
 
 4. **Organize.** Create, delete, rename/move, copy:
 
@@ -104,4 +104,4 @@ tokimo-app-finder rm -r media /downloads/tmp
   `cp` / `mv` / `rm -r`. The CLI surfaces the driver's error verbatim; that means
   the operation isn't supported by that storage backend, not a CLI bug.
 - To move data **between a bucket and your local machine**, use the
-  `finder-transfer-files` skill. To mirror whole directory trees, use `finder-sync-directories`.
+  `transfer-files` skill. To mirror whole directory trees, use `sync-directories`.
