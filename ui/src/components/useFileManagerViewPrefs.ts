@@ -19,7 +19,7 @@
 
 import type { SortBy, SortDir, ViewMode } from "@tokimo/ui";
 import { useCallback, useEffect, useState } from "react";
-import { useComponentPreference } from "../hooks/use-preference";
+import { useComponentPreference } from "@tokimo/sdk";
 
 export interface FileManagerViewPrefs {
   viewMode: ViewMode;

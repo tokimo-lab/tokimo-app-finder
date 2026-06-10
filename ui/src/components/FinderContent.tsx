@@ -1,4 +1,8 @@
-import { useWindowActions, useWindowNav } from "@tokimo/sdk";
+import {
+  useSidebarCollapsed,
+  useWindowActions,
+  useWindowNav,
+} from "@tokimo/sdk";
 import { AppSetupGuide, type AppSetupGuideProps, Spin } from "@tokimo/ui";
 import { Archive, FolderPlus, HardDrive, Star } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect } from "react";
@@ -8,7 +12,6 @@ import { api } from "../api/client";
 import { FinderFavoritesContent } from "../components/FinderFavoritesContent";
 import { FAVORITES_KEY, VfsSidebar } from "../components/VfsSidebar";
 import { useContainerWidth } from "../hooks/use-container-width";
-import { useSidebarCollapsed } from "../hooks/use-sidebar-collapsed";
 import { useWindowMetadata } from "../hooks/use-window-state";
 
 const FileManager = lazy(() =>

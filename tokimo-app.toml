@@ -32,6 +32,80 @@ schema = "finder"
 migrations_dir = "migrations"
 driver = "postgres"
 
+[[settings]]
+id    = "sidebar"
+title = "settings.sidebar.title"
+icon  = "Sidebar"
+
+[[settings.fields]]
+key          = "sidebarCollapsed"
+type         = "boolean"
+label        = "settings.sidebar.defaultCollapsed"
+defaultValue = false
+
+[settings.fields.preferenceScope]
+scope    = "component"
+scope_id = "finder"
+
+[[settings]]
+id    = "view"
+title = "settings.fileManager.view"
+icon  = "FolderOpen"
+
+[[settings.fields]]
+key          = "viewMode"
+type         = "select"
+label        = "settings.fileManager.viewMode"
+defaultValue = "list"
+options      = [
+  { label = "settings.fileManager.viewList", value = "list" },
+  { label = "settings.fileManager.viewGrid", value = "grid" },
+  { label = "settings.fileManager.viewColumn", value = "column" },
+]
+
+[settings.fields.preferenceScope]
+scope    = "component"
+scope_id = "file-manager"
+
+[[settings.fields]]
+key          = "sortBy"
+type         = "select"
+label        = "settings.fileManager.sortBy"
+defaultValue = "name"
+options      = [
+  { label = "settings.fileManager.sortName", value = "name" },
+  { label = "settings.fileManager.sortSize", value = "size" },
+  { label = "settings.fileManager.sortModifiedAt", value = "modifiedAt" },
+]
+
+[settings.fields.preferenceScope]
+scope    = "component"
+scope_id = "file-manager"
+
+[[settings.fields]]
+key          = "sortDir"
+type         = "select"
+label        = "settings.fileManager.sortDir"
+defaultValue = "asc"
+options      = [
+  { label = "settings.fileManager.sortAsc", value = "asc" },
+  { label = "settings.fileManager.sortDesc", value = "desc" },
+]
+
+[settings.fields.preferenceScope]
+scope    = "component"
+scope_id = "file-manager"
+
+[[settings.fields]]
+key          = "showHidden"
+type         = "boolean"
+label        = "settings.fileManager.showHidden"
+defaultValue = false
+
+[settings.fields.preferenceScope]
+scope    = "component"
+scope_id = "file-manager"
+
 [[app_settings]]
 id                   = "file-previewer"
 title                = "settings.filePreviewer.title"
