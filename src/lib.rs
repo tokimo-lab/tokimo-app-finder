@@ -2,7 +2,7 @@
 
 pub(crate) const MANIFEST: &str = include_str!("../tokimo-app.toml");
 
-pub mod state;
 pub mod db;
 pub mod error;
 pub mod handlers;
+pub mod state;

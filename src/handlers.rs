@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 use tokimo_bus_auth::TokimoUser;
 use uuid::Uuid;
 
-use crate::state::AppState;
 use crate::db::repos::file_favorite_repo::FileFavoriteRepo;
 use crate::error::AppError;
+use crate::state::AppState;
 
 // ─── Response helpers (matching music app pattern) ─────────────────────
 

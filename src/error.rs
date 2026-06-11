@@ -30,7 +30,14 @@ impl IntoResponse for AppError {
             success: bool,
             error: String,
         }
-        (status, Json(ErrBody { success: false, error: message })).into_response()
+        (
+            status,
+            Json(ErrBody {
+                success: false,
+                error: message,
+            }),
+        )
+            .into_response()
     }
 }
 
