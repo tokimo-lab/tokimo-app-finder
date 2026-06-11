@@ -28,8 +28,8 @@ use tracing::{error, info};
 #[derive(Parser, Debug)]
 #[command(
     name = "tokimo-app-finder",
-    about = "Finder — Tokimo 文件管理器 CLI",
-    long_about = "Finder CLI — 管理文件收藏夹。\n\n直接连接数据库（通过 DATABASE_URL），不需要主 server 运行。",
+    about = "Finder — Tokimo File Manager CLI",
+    long_about = "Finder CLI — manage file favorites.\n\nConnects directly to the database (via DATABASE_URL); no main server needed.",
     term_width = 100
 )]
 struct Cli {
@@ -41,11 +41,11 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Command {
-    /// 管理文件收藏夹
+    /// Manage file favorites
     #[command(
         subcommand_required = false,
         arg_required_else_help = false,
-        long_about = "管理文件收藏夹",
+        long_about = "Manage file favorites",
         term_width = 100
     )]
     Favorites {
@@ -160,9 +160,9 @@ enum Command {
 
 #[derive(Subcommand, Debug)]
 pub(crate) enum FavoritesCmd {
-    /// 列出收藏
+    /// List favorites
     List,
-    /// 取消收藏
+    /// Remove from favorites
     Remove {
         #[arg(long)]
         vfs_id: uuid::Uuid,
