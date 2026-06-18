@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use axum::Router;
+use axum::{Router, middleware};
 use tokimo_bus_protocol::{BusListener, DataPlaneSocket};
 use tracing::{error, info};
 
@@ -29,5 +29,8 @@ fn build_router(ctx: Arc<AppState>) -> Router {
     Router::new()
         .merge(router::build_finder_app_routes())
         .route("/assets/{*path}", axum::routing::get(assets::serve))
+        .layer(middleware::from_fn(
+            tokimo_bus_protocol::task_local::auth_middleware,
+        ))
         .with_state(ctx)
 }

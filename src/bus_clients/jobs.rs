@@ -42,19 +42,6 @@ pub struct JobView {
     pub error: Option<String>,
 }
 
-pub fn finder_caller(user_id: Option<Uuid>) -> CallerCtx {
-    CallerCtx {
-        user_id: user_id.map(|id| id.to_string()),
-        request_id: Uuid::new_v4().to_string(),
-        workspace: None,
-        caller_app_id: Some("finder".to_string()),
-    }
-}
-
-pub fn service_caller() -> CallerCtx {
-    finder_caller(None)
-}
-
 pub async fn create(
     client: &BusClient,
     caller: CallerCtx,

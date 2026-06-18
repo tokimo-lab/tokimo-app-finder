@@ -21,15 +21,6 @@ pub struct DriverConfig {
     pub config: JsonValue,
 }
 
-pub fn finder_caller() -> CallerCtx {
-    CallerCtx {
-        user_id: None,
-        request_id: Uuid::new_v4().to_string(),
-        workspace: None,
-        caller_app_id: Some("finder".to_string()),
-    }
-}
-
 pub async fn get_driver_config(
     client: &BusClient,
     caller: CallerCtx,

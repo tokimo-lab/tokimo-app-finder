@@ -4,7 +4,6 @@ use std::sync::{Arc, OnceLock};
 
 use serde::{Deserialize, Serialize};
 use tokimo_bus_client::BusClient;
-use tokimo_bus_protocol::CallerCtx;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize)]
@@ -33,12 +32,7 @@ impl AuthClient {
     pub async fn validate_session(&self, session_id: &str) -> Option<Uuid> {
         let client = self.client()?;
         let payload = serde_json::to_vec(&ValidateSessionReq { session_id }).ok()?;
-        let caller = CallerCtx {
-            user_id: None,
-            request_id: Uuid::new_v4().to_string(),
-            workspace: None,
-            caller_app_id: Some("finder".to_string()),
-        };
+        let caller = client.auto_caller("finder");
         match client
             .invoke("auth", "validate_session", payload, caller)
             .await
