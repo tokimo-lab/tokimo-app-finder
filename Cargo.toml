@@ -34,6 +34,3 @@ urlencoding       = "2"
 lto       = "thin"
 opt-level = 3
 strip     = "symbols"
-
-[lints]
-workspace = true
