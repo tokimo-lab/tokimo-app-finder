@@ -12,6 +12,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import { AppCtxProvider } from "./AppContext";
 import FinderContent from "./components/FinderContent";
+import { buildFinderRoute, parseFinderRoute } from "./finder-route";
 import i18n, { SUPPORTED_LOCALES } from "./i18n";
 import "./index.css";
 
@@ -26,6 +27,30 @@ export default defineApp({
     windowType: "finder",
     defaultSize: { width: 1100, height: 700 },
     category: "system",
+  },
+  standalone: {
+    createWindow: (route) => {
+      const selection = parseFinderRoute(route);
+      return {
+        type: "finder",
+        route,
+        metadata: {
+          fileSystemId: selection.fileSystemId,
+          favoritesActive: selection.favoritesActive,
+        },
+      };
+    },
+    getRoute: (window) => {
+      if (window.type !== "finder") return null;
+      const selection = parseFinderRoute(window.route ?? "/");
+      const fileSystemId =
+        selection.fileSystemId ?? window.metadata?.fileSystemId;
+      return buildFinderRoute(
+        selection.path,
+        typeof fileSystemId === "string" ? fileSystemId : undefined,
+        selection.favoritesActive ?? window.metadata?.favoritesActive === true,
+      );
+    },
   },
   mount(container, ctx): Dispose {
     const applyLocale = (raw: string) => {

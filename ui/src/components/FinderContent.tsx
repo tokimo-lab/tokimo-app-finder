@@ -11,6 +11,7 @@ import type { VfsDisplayHints, VfsDto } from "../api/client";
 import { api } from "../api/client";
 import { FinderFavoritesContent } from "../components/FinderFavoritesContent";
 import { FAVORITES_KEY, VfsSidebar } from "../components/VfsSidebar";
+import { buildFinderRoute, parseFinderRoute } from "../finder-route";
 import { useContainerWidth } from "../hooks/use-container-width";
 import { useWindowMetadata } from "../hooks/use-window-state";
 
@@ -39,10 +40,12 @@ export default function FileBrowserContent() {
   const { currentWindowId, updateMetadata, openWindow } = useWindowActions();
   const metadata = useWindowMetadata();
 
-  const fileSystemId = metadata.fileSystemId as string | undefined;
-  const initialPath = route || "/";
-  const sourceLabel = metadata.fsSourceLabel as string | undefined;
-  const favoritesActive = metadata.favoritesActive === true;
+  const selection = parseFinderRoute(route);
+  const fileSystemId =
+    selection.fileSystemId ?? (metadata.fileSystemId as string | undefined);
+  const initialPath = selection.path;
+  const favoritesActive =
+    selection.favoritesActive ?? metadata.favoritesActive === true;
 
   const [containerRef, containerWidth] = useContainerWidth();
   const { collapsed: sidebarCollapsed, onToggleCollapse } = useSidebarCollapsed(
@@ -53,6 +56,14 @@ export default function FileBrowserContent() {
   // Always query fileSystems (needed for auto-select and favorites→VFS navigation)
   const { data: fileSystems, isLoading: isVfsLoading } =
     api.vfs.list.useQuery();
+  const activeFileSystem = fileSystems?.find((fs) => fs.id === fileSystemId);
+  const sourceLabel = activeFileSystem
+    ? buildBrowseLabel(
+        activeFileSystem.type,
+        activeFileSystem.displayHints,
+        activeFileSystem.name,
+      )
+    : (metadata.fsSourceLabel as string | undefined);
 
   // Auto-select first enabled filesystem when none is set
   useEffect(() => {
@@ -70,15 +81,15 @@ export default function FileBrowserContent() {
         first.name,
       ),
     });
-    replace(dirPath);
+    replace(buildFinderRoute(dirPath, first.id));
     document.title = first.name;
   }, [fileSystemId, fileSystems, updateMetadata, replace, currentWindowId]);
 
   const handleNavigate = useCallback(
     (path: string) => {
-      replace(path);
+      replace(buildFinderRoute(path, fileSystemId, favoritesActive));
     },
-    [replace],
+    [replace, fileSystemId, favoritesActive],
   );
 
   const handleSwitchVfs = useCallback(
@@ -92,7 +103,7 @@ export default function FileBrowserContent() {
         fsSourceLabel: buildBrowseLabel(fs.type, fs.displayHints, fs.name),
         favoritesActive: false,
       });
-      replace(dirPath);
+      replace(buildFinderRoute(dirPath, fs.id));
       document.title = fs.name;
     },
     [fileSystemId, favoritesActive, updateMetadata, replace, currentWindowId],
@@ -100,7 +111,8 @@ export default function FileBrowserContent() {
 
   const handleSelectFavorites = useCallback(() => {
     updateMetadata(currentWindowId, { favoritesActive: true });
-  }, [updateMetadata, currentWindowId]);
+    replace(buildFinderRoute(initialPath, fileSystemId, true));
+  }, [updateMetadata, currentWindowId, replace, initialPath, fileSystemId]);
 
   /** Called from FinderFavoritesContent when user double-clicks a directory */
   const handleSwitchToVfsById = useCallback(
@@ -113,7 +125,7 @@ export default function FileBrowserContent() {
         fsSourceLabel: buildBrowseLabel(fs.type, fs.displayHints, fs.name),
         favoritesActive: false,
       });
-      replace(path);
+      replace(buildFinderRoute(path, vfsId));
       document.title = fs.name;
     },
     [fileSystems, updateMetadata, replace, currentWindowId],
@@ -184,7 +196,10 @@ export default function FileBrowserContent() {
               key={fileSystemId}
               fileSystemId={fileSystemId}
               initialPath={initialPath}
-              sourceType={metadata.fsSourceType as string | undefined}
+              sourceType={
+                activeFileSystem?.type ??
+                (metadata.fsSourceType as string | undefined)
+              }
               sourceLabel={sourceLabel}
               onNavigate={handleNavigate}
             />
