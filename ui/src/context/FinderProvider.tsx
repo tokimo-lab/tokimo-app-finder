@@ -101,6 +101,7 @@ export function FinderProvider({
   // 9. Mutations
   const mutations = useFinderMutations({
     fm,
+    navigateTo: navigateToWithCallback,
     fileSystemId,
     sourceType,
     sourceLabel,

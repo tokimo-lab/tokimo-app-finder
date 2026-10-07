@@ -25,6 +25,7 @@ import type { WallpaperPrefs } from "../types";
 
 interface UseFinderMutationsOptions {
   fm: UseFileManagerReturn;
+  navigateTo: (path: string) => void;
   fileSystemId?: string;
   sourceType?: string;
   sourceLabel?: string;
@@ -41,6 +42,7 @@ interface UseFinderMutationsOptions {
 
 export function useFinderMutations({
   fm,
+  navigateTo,
   fileSystemId,
   sourceType,
   sourceLabel,
@@ -229,7 +231,7 @@ export function useFinderMutations({
   const handleOpen = useCallback(
     (node: FileNode) => {
       if (node.isDirectory) {
-        fm.navigateTo(node.path);
+        navigateTo(node.path);
       } else {
         const kind = getPreviewKind(node.name);
         const winType: ViewerWindowType = kind === "none" ? "hex" : kind;
@@ -243,7 +245,7 @@ export function useFinderMutations({
         });
       }
     },
-    [fm, openFileViewer, fileSystemId],
+    [navigateTo, openFileViewer, fileSystemId],
   );
 
   const handleTransferTo = useCallback(
